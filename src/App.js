@@ -78,6 +78,14 @@ const themes = {
   }
 };
 
+// CORRECCIÓN: Todos los componentes de UI se definen fuera y antes del componente App.
+const Background = ({ mode }) => (
+  <div className="absolute inset-0 z-0 overflow-hidden">
+    <div className={`absolute top-[-50%] left-[-50%] w-[200%] h-[200%] ${mode === 'light' ? 'bg-gradient-radial from-rose-100/40 via-amber-50/0 to-amber-50/0' : 'bg-gradient-radial from-rose-900/20 via-black/0 to-black/0'} animate-pulse-slow`}></div>
+    <div className={`absolute bottom-[-50%] right-[-50%] w-[200%] h-[200%] ${mode === 'light' ? 'bg-gradient-radial from-sky-100/40 via-amber-50/0 to-amber-50/0' : 'bg-gradient-radial from-sky-900/20 via-black/0 to-black/0'} animate-pulse-slow delay-2000`}></div>
+  </div>
+);
+
 const AssistantIcon = ({ isSpeaking, theme }) => (
   <svg width="32" height="32" viewBox="0 0 24 24" className={theme.primary}>
     <path d="M8 14 C10 15, 14 15, 16 14" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round">
@@ -133,7 +141,6 @@ const Message = ({ message, isUser, playbackState, isLastMessage, onPlaybackCont
 // --- Componente Principal de la Aplicación ---
 
 const App = () => {
-  // CAMBIO: El estado de los mensajes ahora es un objeto agrupado por fecha
   const [groupedMessages, setGroupedMessages] = useState({});
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -268,6 +275,8 @@ const App = () => {
     setInput('');
     setIsLoading(true);
     
+    // NOTA PARA VERSIÓN FINAL: Para Vercel, el fetch debe ser a '/api/chat'
+    // Para este preview, usamos la llamada directa a la API de Google.
     let retries = 3;
     let delay = 1000;
     while (retries > 0) {
@@ -376,14 +385,11 @@ const App = () => {
         }
         .animate-pulse-slow { animation: pulse-slow 15s infinite ease-in-out; }
       `}</style>
-      <div className="absolute inset-0 z-0 overflow-hidden">
-        <div className={`absolute top-[-50%] left-[-50%] w-[200%] h-[200%] ${mode === 'light' ? 'bg-gradient-radial from-rose-100/40 via-amber-50/0 to-amber-50/0' : 'bg-gradient-radial from-rose-900/20 via-black/0 to-black/0'} animate-pulse-slow`}></div>
-        <div className={`absolute bottom-[-50%] right-[-50%] w-[200%] h-[200%] ${mode === 'light' ? 'bg-gradient-radial from-sky-100/40 via-amber-50/0 to-amber-50/0' : 'bg-gradient-radial from-sky-900/20 via-black/0 to-black/0'} animate-pulse-slow delay-2000`}></div>
-      </div>
+      <Background mode={mode} />
       
       <div className="flex flex-col flex-1 z-10 min-h-0">
         <header className={`${currentTheme.header} backdrop-blur-md p-4 border-b border-white/30 sticky top-0`}>
-          <div className="container mx-auto flex items-center justify-between">
+          <div className="container mx-auto flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center">
                   <div className={`p-2 bg-white rounded-2xl ${currentTheme.neumorphicSm} mr-4`}>
                     <PawPrint className={`w-8 h-8 ${currentTheme.primary}`} />
