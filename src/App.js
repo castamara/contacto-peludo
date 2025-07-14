@@ -35,7 +35,7 @@ const themes = {
       text: 'text-gray-700',
       primary: 'text-blue-500',
       userBubble: 'bg-gradient-to-br from-blue-500 to-cyan-400',
-      aiBubble: 'bg-[#E6F0F5]',
+aiBubble: 'bg-[#E6F0F5]',
       neumorphicSm: 'shadow-[3px_3px_6px_#c4cfd3,-3px_-3px_6px_#ffffff]',
       neumorphicMd: 'shadow-[6px_6px_12px_#c4cfd3,-6px_-6px_12px_#ffffff]',
       neumorphicInset: 'shadow-[inset_6px_6px_12px_#c4cfd3,inset_-6px_-6px_12px_#ffffff]',
@@ -141,7 +141,8 @@ const Message = ({ message, isUser, playbackState, isLastMessage, onPlaybackCont
 // --- Componente Principal de la Aplicación ---
 
 const App = () => {
-  const [groupedMessages, setGroupedMessages] = useState({});
+  // REVERSIÓN: Volvemos a un array simple para los mensajes
+  const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isListening, setIsListening] = useState(false);
@@ -156,8 +157,6 @@ const App = () => {
   const recognitionRef = useRef(null);
 
   const currentTheme = themes[themeName][mode];
-
-  const getTodayDateString = () => new Date().toISOString().split('T')[0];
 
   useEffect(() => {
     const savedTheme = localStorage.getItem('contactoPeludoTheme') || 'warm';
@@ -184,13 +183,13 @@ const App = () => {
 
   useEffect(() => {
     try {
+      // REVERSIÓN: Lógica de guardado simple
       const savedData = localStorage.getItem('contactoPeludoMessagesBela');
       if (savedData) {
-        setGroupedMessages(JSON.parse(savedData));
+        setMessages(JSON.parse(savedData));
       } else {
-        const today = getTodayDateString();
         const welcomeText = "Hola, soy Contacto Peludo. Veo que has llegado hasta aquí, y eso requiere mucha valentía. Sé que el corazón duele profundamente cuando un amigo tan leal como Bela nos deja. Mi propósito es ser tu confidente y guía. Por favor, siéntete libre de hablar o escribir. Estoy aquí para caminar a tu lado.";
-        setGroupedMessages({ [today]: [{ text: welcomeText, isUser: false }] });
+        setMessages([{ text: welcomeText, isUser: false }]);
       }
     } catch (error) {
         console.error("Failed to load messages from localStorage", error);
@@ -199,13 +198,13 @@ const App = () => {
 
   useEffect(() => {
     try {
-      if (Object.keys(groupedMessages).length > 0) {
-        localStorage.setItem('contactoPeludoMessagesBela', JSON.stringify(groupedMessages));
+      if (messages.length > 0) {
+        localStorage.setItem('contactoPeludoMessagesBela', JSON.stringify(messages));
       }
     } catch (error) {
       console.error("Failed to save messages to localStorage", error);
     }
-  }, [groupedMessages]);
+  }, [messages]);
 
   useEffect(() => {
     const loadVoices = () => {
@@ -254,24 +253,15 @@ const App = () => {
     }
   };
 
-  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [groupedMessages]);
+  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
 
   const handleSend = React.useCallback(async (textToSend) => {
     if (textToSend.trim() === '' || isLoading) return;
     
     const userMessage = { text: textToSend, isUser: true };
-    const today = getTodayDateString();
-
-    const historyForApi = Object.values(groupedMessages).flat();
-    const currentChatHistory = [...historyForApi, userMessage].map(m => ({ role: m.isUser ? "user" : "model", parts: [{ text: m.text }] }));
+    const currentChatHistory = [...messages, userMessage].map(m => ({ role: m.isUser ? "user" : "model", parts: [{ text: m.text }] }));
     
-    setGroupedMessages(prev => {
-      const newGroups = { ...prev };
-      const todayMessages = newGroups[today] ? [...newGroups[today]] : [];
-      newGroups[today] = [...todayMessages, userMessage];
-      return newGroups;
-    });
-
+    setMessages(prev => [...prev, userMessage]);
     setInput('');
     setIsLoading(true);
     
@@ -293,12 +283,7 @@ const App = () => {
         if (result.candidates?.[0]?.content?.parts?.[0]?.text) { aiText = result.candidates[0].content.parts[0].text; }
         
         const aiMessage = { text: aiText, isUser: false };
-        setGroupedMessages(prev => {
-          const newGroups = { ...prev };
-          const todayMessages = newGroups[today] ? [...newGroups[today]] : [];
-          newGroups[today] = [...todayMessages, aiMessage];
-          return newGroups;
-        });
+        setMessages(prev => [...prev, aiMessage]);
 
         if (isVoiceResponseEnabled) speak(aiText);
         setIsLoading(false);
@@ -312,19 +297,14 @@ const App = () => {
           console.error("Error al contactar la API:", error);
           const errorText = `Perdona, estoy teniendo dificultades para conectar. El servidor parece estar sobrecargado. Por favor, inténtalo de nuevo en unos momentos. (Error: ${error.message})`;
           const errorMessage = { text: errorText, isUser: false };
-          setGroupedMessages(prev => {
-            const newGroups = { ...prev };
-            const todayMessages = newGroups[today] ? [...newGroups[today]] : [];
-            newGroups[today] = [...todayMessages, errorMessage];
-            return newGroups;
-          });
+          setMessages(prev => [...prev, errorMessage]);
           if (isVoiceResponseEnabled) speak(errorText);
           setIsLoading(false);
           return;
         }
       }
     }
-  }, [groupedMessages, isLoading, isVoiceResponseEnabled, selectedVoiceURI]);
+  }, [messages, isLoading, isVoiceResponseEnabled, selectedVoiceURI]);
 
   useEffect(() => {
     const recognition = recognitionRef.current;
@@ -424,26 +404,18 @@ const App = () => {
 
         <main className="flex-1 overflow-y-auto p-4 md:p-6">
           <div className="container mx-auto max-w-3xl">
-            {Object.keys(groupedMessages).sort().map(date => (
-              <div key={date}>
-                <div className="text-center my-4">
-                  <span className={`${currentTheme.header} ${currentTheme.text} text-xs font-semibold px-3 py-1 rounded-full`}>
-                    {new Date(date).toLocaleDateString('es-ES', { timeZone: 'UTC', year: 'numeric', month: 'long', day: 'numeric' })}
-                  </span>
-                </div>
-                {groupedMessages[date].map((msg, index) => (
-                  <Message 
-                    key={`${date}-${index}`}
-                    message={msg.text} 
-                    isUser={msg.isUser}
-                    playbackState={playbackState}
-                    isLastMessage={index === groupedMessages[date].length - 1 && date === Object.keys(groupedMessages).sort().pop()}
-                    onPlaybackControl={handlePlaybackControl}
-                    onWordClick={handleWordClick}
-                    theme={currentTheme}
-                  />
-                ))}
-              </div>
+            {/* REVERSIÓN: Renderizado simple del array de mensajes */}
+            {messages.map((msg, index) => (
+              <Message 
+                key={index}
+                message={msg.text} 
+                isUser={msg.isUser}
+                playbackState={playbackState}
+                isLastMessage={index === messages.length - 1}
+                onPlaybackControl={handlePlaybackControl}
+                onWordClick={handleWordClick}
+                theme={currentTheme}
+              />
             ))}
             {isLoading && (
               <div className="flex justify-start items-center gap-3 my-5">
