@@ -5,6 +5,7 @@ export default async function handler(req, res) {
 
   const { chatHistory, systemInstruction } = req.body;
 
+  // Lee la clave de API de forma segura desde las variables de entorno de Vercel
   const apiKey = process.env.GEMINI_API_KEY;
 
   if (!apiKey) {
