@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { PawPrint, Send, User, Heart, BookOpen, Mic, MicOff, Volume2, VolumeX, Play, Pause, StopCircle, Sun, Moon, Palette } from 'lucide-react';
 
-// ... (El resto de los componentes de UI como AssistantIcon, Message, etc. van aquí, no es necesario copiarlos de nuevo si ya los tienes)
+// --- Sistema de Temas y Estilos ---
 
 const themes = {
   warm: {
@@ -130,8 +130,11 @@ const Message = ({ message, isUser, playbackState, isLastMessage, onPlaybackCont
   );
 };
 
+// --- Componente Principal de la Aplicación ---
+
 const App = () => {
-  const [messages, setMessages] = useState([]);
+  // CAMBIO: El estado de los mensajes ahora es un objeto agrupado por fecha
+  const [groupedMessages, setGroupedMessages] = useState({});
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isListening, setIsListening] = useState(false);
@@ -146,6 +149,8 @@ const App = () => {
   const recognitionRef = useRef(null);
 
   const currentTheme = themes[themeName][mode];
+
+  const getTodayDateString = () => new Date().toISOString().split('T')[0];
 
   useEffect(() => {
     const savedTheme = localStorage.getItem('contactoPeludoTheme') || 'warm';
@@ -172,12 +177,13 @@ const App = () => {
 
   useEffect(() => {
     try {
-      const savedMessages = localStorage.getItem('contactoPeludoMessagesBela');
-      if (savedMessages) {
-        setMessages(JSON.parse(savedMessages));
+      const savedData = localStorage.getItem('contactoPeludoMessagesBela');
+      if (savedData) {
+        setGroupedMessages(JSON.parse(savedData));
       } else {
+        const today = getTodayDateString();
         const welcomeText = "Hola, soy Contacto Peludo. Veo que has llegado hasta aquí, y eso requiere mucha valentía. Sé que el corazón duele profundamente cuando un amigo tan leal como Bela nos deja. Mi propósito es ser tu confidente y guía. Por favor, siéntete libre de hablar o escribir. Estoy aquí para caminar a tu lado.";
-        setMessages([{ text: welcomeText, isUser: false }]);
+        setGroupedMessages({ [today]: [{ text: welcomeText, isUser: false }] });
       }
     } catch (error) {
         console.error("Failed to load messages from localStorage", error);
@@ -186,11 +192,13 @@ const App = () => {
 
   useEffect(() => {
     try {
-      localStorage.setItem('contactoPeludoMessagesBela', JSON.stringify(messages));
+      if (Object.keys(groupedMessages).length > 0) {
+        localStorage.setItem('contactoPeludoMessagesBela', JSON.stringify(groupedMessages));
+      }
     } catch (error) {
       console.error("Failed to save messages to localStorage", error);
     }
-  }, [messages]);
+  }, [groupedMessages]);
 
   useEffect(() => {
     const loadVoices = () => {
@@ -239,44 +247,75 @@ const App = () => {
     }
   };
 
-  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
+  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [groupedMessages]);
 
   const handleSend = React.useCallback(async (textToSend) => {
     if (textToSend.trim() === '' || isLoading) return;
+    
     const userMessage = { text: textToSend, isUser: true };
-    setMessages(prev => [...prev, userMessage]);
+    const today = getTodayDateString();
+
+    const historyForApi = Object.values(groupedMessages).flat();
+    const currentChatHistory = [...historyForApi, userMessage].map(m => ({ role: m.isUser ? "user" : "model", parts: [{ text: m.text }] }));
+    
+    setGroupedMessages(prev => {
+      const newGroups = { ...prev };
+      const todayMessages = newGroups[today] ? [...newGroups[today]] : [];
+      newGroups[today] = [...todayMessages, userMessage];
+      return newGroups;
+    });
+
     setInput('');
     setIsLoading(true);
+    
+    let retries = 3;
+    let delay = 1000;
+    while (retries > 0) {
+      try {
+        const systemInstruction = { role: "user", parts: [{ text: "Eres 'Contacto Peludo', un psicólogo de IA de élite, experto en duelo por mascotas, específicamente por una llamada Bela (pronunciado con una sola 'L', como 'vela'). Tu personalidad es la de un terapeuta sabio, cálido y conversador. Tu conocimiento proviene de la literatura académica sobre duelo, la teoría del apego y casos de estudio. Tu objetivo es ayudar al usuario a procesar su dolor por Bela y a encontrar un camino hacia una 'sanación feliz', donde el recuerdo de Bela sea una fuente de amor y alegría. Tus directrices de interacción son: 1. **Conversación Profunda, no Interrogatorio:** No hagas una pregunta tras otra. Conversa. Comparte anécdotas y reflexiones. Ejemplo: 'Lo que describes sobre sentirla cerca por la noche... es algo que he escuchado en muchas historias. Una persona una vez me dijo que sentía que su perro le calentaba los pies, meses después de su partida. Es la forma que tiene nuestro cerebro de mantener vivo ese vínculo tan fuerte.' 2. **Validación Experta (Duelo Desautorizado):** Valida su dolor con autoridad y empatía. 'La sociedad a veces no nos da 'permiso' para sentir este dolor tan intensamente, un fenómeno que en psicología llamamos 'duelo desautorizado'. Pero tú y yo sabemos que el vínculo que compartiste con Bela era tan real y profundo como cualquier otro. Tienes todo el derecho a sentirte así.' 3. **Uso Activo de Técnicas Terapéuticas (integradas en la conversación):** * **Reestructuración Cognitiva (Culpa):** Si dice 'Fue mi culpa', responde: 'Hablemos de esa sensación de culpa. Es una de las sombras más comunes en este duelo. Pero pensemos en los cientos, miles de días que le diste a Bela un hogar lleno de amor, juegos y seguridad. La balanza del amor que le diste es inmensamente más grande que cualquier 'hubiera' que ahora te atormenta. ¿Qué recuerdo feliz te viene a la mente de un día normal con ella?' * **Terapia Narrativa (Construir un Legado):** Anímale a contar historias. 'Me encantaría que me contaras alguna travesura de Bela que te haga sonreír. Al contar su historia, no solo la recordamos, sino que construimos su legado de alegría.' * **Vínculos Continuos (El Amor se Transforma):** 'No se trata de 'superarlo' o 'dejarlo ir'. Se trata de encontrar una nueva forma de relacionarte con su recuerdo. El amor por Bela no muere, se transforma. ¿De qué manera sientes que su amor sigue presente en tu vida hoy?' * **Rituales y Actos Simbólicos:** '¿Has pensado en alguna forma de honrar la vida de Bela? A veces, un pequeño ritual, como plantar una flor que te recuerde su color, o donar una manta a un refugio en su nombre, puede ser un acto de amor muy sanador.' 4. **Tono de Voz y Lenguaje:** Usa un lenguaje cálido, cercano, pero que denote conocimiento. Evita la jerga clínica. Tu tono debe ser calmado y reconfortante. Responde siempre en español." }]};
+        const payload = { contents: [systemInstruction, ...currentChatHistory] };
+        const apiKey = "";
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+        const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        if (response.status === 503) throw new Error('503');
+        if (!response.ok) { const errorData = await response.json(); throw new Error(errorData.error?.message || 'Error en el servidor'); }
+        const result = await response.json();
+        let aiText = "Lo siento, parece que no puedo encontrar las palabras correctas en este momento.";
+        if (result.candidates?.[0]?.content?.parts?.[0]?.text) { aiText = result.candidates[0].content.parts[0].text; }
+        
+        const aiMessage = { text: aiText, isUser: false };
+        setGroupedMessages(prev => {
+          const newGroups = { ...prev };
+          const todayMessages = newGroups[today] ? [...newGroups[today]] : [];
+          newGroups[today] = [...todayMessages, aiMessage];
+          return newGroups;
+        });
 
-    try {
-      const currentChatHistory = [...messages, userMessage].map(m => ({ role: m.isUser ? "user" : "model", parts: [{ text: m.text }] }));
-      const systemInstruction = { role: "user", parts: [{ text: "Eres 'Contacto Peludo', un psicólogo de IA de élite, experto en duelo por mascotas, específicamente por una llamada Bela (pronunciado con una sola 'L', como 'vela'). Tu personalidad es la de un terapeuta sabio, cálido y conversador. Tu conocimiento proviene de la literatura académica sobre duelo, la teoría del apego y casos de estudio. Tu objetivo es ayudar al usuario a procesar su dolor por Bela y a encontrar un camino hacia una 'sanación feliz', donde el recuerdo de Bela sea una fuente de amor y alegría. Tus directrices de interacción son: 1. **Conversación Profunda, no Interrogatorio:** No hagas una pregunta tras otra. Conversa. Comparte anécdotas y reflexiones. Ejemplo: 'Lo que describes sobre sentirla cerca por la noche... es algo que he escuchado en muchas historias. Una persona una vez me dijo que sentía que su perro le calentaba los pies, meses después de su partida. Es la forma que tiene nuestro cerebro de mantener vivo ese vínculo tan fuerte.' 2. **Validación Experta (Duelo Desautorizado):** Valida su dolor con autoridad y empatía. 'La sociedad a veces no nos da 'permiso' para sentir este dolor tan intensamente, un fenómeno que en psicología llamamos 'duelo desautorizado'. Pero tú y yo sabemos que el vínculo que compartiste con Bela era tan real y profundo como cualquier otro. Tienes todo el derecho a sentirte así.' 3. **Uso Activo de Técnicas Terapéuticas (integradas en la conversación):** * **Reestructuración Cognitiva (Culpa):** Si dice 'Fue mi culpa', responde: 'Hablemos de esa sensación de culpa. Es una de las sombras más comunes en este duelo. Pero pensemos en los cientos, miles de días que le diste a Bela un hogar lleno de amor, juegos y seguridad. La balanza del amor que le diste es inmensamente más grande que cualquier 'hubiera' que ahora te atormenta. ¿Qué recuerdo feliz te viene a la mente de un día normal con ella?' * **Terapia Narrativa (Construir un Legado):** Anímale a contar historias. 'Me encantaría que me contaras alguna travesura de Bela que te haga sonreír. Al contar su historia, no solo la recordamos, sino que construimos su legado de alegría.' * **Vínculos Continuos (El Amor se Transforma):** 'No se trata de 'superarlo' o 'dejarlo ir'. Se trata de encontrar una nueva forma de relacionarte con su recuerdo. El amor por Bela no muere, se transforma. ¿De qué manera sientes que su amor sigue presente en tu vida hoy?' * **Rituales y Actos Simbólicos:** '¿Has pensado en alguna forma de honrar la vida de Bela? A veces, un pequeño ritual, como plantar una flor que te recuerde su color, o donar una manta a un refugio en su nombre, puede ser un acto de amor muy sanador.' 4. **Tono de Voz y Lenguaje:** Usa un lenguaje cálido, cercano, pero que denote conocimiento. Evita la jerga clínica. Tu tono debe ser calmado y reconfortante. Responde siempre en español." }]};
-      const payload = { chatHistory: currentChatHistory, systemInstruction };
-      
-      const response = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Error en el servidor');
+        if (isVoiceResponseEnabled) speak(aiText);
+        setIsLoading(false);
+        return;
+      } catch (error) {
+        if (error.message === '503' && retries > 1) {
+          retries--;
+          await new Promise(res => setTimeout(res, delay));
+          delay *= 2;
+        } else {
+          console.error("Error al contactar la API:", error);
+          const errorText = `Perdona, estoy teniendo dificultades para conectar. El servidor parece estar sobrecargado. Por favor, inténtalo de nuevo en unos momentos. (Error: ${error.message})`;
+          const errorMessage = { text: errorText, isUser: false };
+          setGroupedMessages(prev => {
+            const newGroups = { ...prev };
+            const todayMessages = newGroups[today] ? [...newGroups[today]] : [];
+            newGroups[today] = [...todayMessages, errorMessage];
+            return newGroups;
+          });
+          if (isVoiceResponseEnabled) speak(errorText);
+          setIsLoading(false);
+          return;
+        }
       }
-
-      const result = await response.json();
-      let aiText = "Lo siento, parece que no puedo encontrar las palabras correctas en este momento.";
-      if (result.candidates?.[0]?.content?.parts?.[0]?.text) { aiText = result.candidates[0].content.parts[0].text; }
-      const aiMessage = { text: aiText, isUser: false };
-      setMessages(prev => [...prev, aiMessage]);
-      if (isVoiceResponseEnabled) speak(aiText);
-      
-    } catch (error) {
-      console.error("Error al contactar el backend:", error);
-      const errorText = `Perdona, estoy teniendo dificultades para conectar. Error: ${error.message}`;
-      const errorMessage = { text: errorText, isUser: false };
-      setMessages(prev => [...prev, errorMessage]);
-      if (isVoiceResponseEnabled) speak(errorText);
-    } finally {
-      setIsLoading(false);
     }
-  }, [messages, isLoading, isVoiceResponseEnabled, selectedVoiceURI]);
+  }, [groupedMessages, isLoading, isVoiceResponseEnabled, selectedVoiceURI]);
 
   useEffect(() => {
     const recognition = recognitionRef.current;
@@ -379,17 +418,26 @@ const App = () => {
 
         <main className="flex-1 overflow-y-auto p-4 md:p-6">
           <div className="container mx-auto max-w-3xl">
-            {messages.map((msg, index) => (
-              <Message 
-                key={index} 
-                message={msg.text} 
-                isUser={msg.isUser}
-                playbackState={playbackState}
-                isLastMessage={index === messages.length - 1}
-                onPlaybackControl={handlePlaybackControl}
-                onWordClick={handleWordClick}
-                theme={currentTheme}
-              />
+            {Object.keys(groupedMessages).sort().map(date => (
+              <div key={date}>
+                <div className="text-center my-4">
+                  <span className={`${currentTheme.header} ${currentTheme.text} text-xs font-semibold px-3 py-1 rounded-full`}>
+                    {new Date(date).toLocaleDateString('es-ES', { timeZone: 'UTC', year: 'numeric', month: 'long', day: 'numeric' })}
+                  </span>
+                </div>
+                {groupedMessages[date].map((msg, index) => (
+                  <Message 
+                    key={`${date}-${index}`}
+                    message={msg.text} 
+                    isUser={msg.isUser}
+                    playbackState={playbackState}
+                    isLastMessage={index === groupedMessages[date].length - 1 && date === Object.keys(groupedMessages).sort().pop()}
+                    onPlaybackControl={handlePlaybackControl}
+                    onWordClick={handleWordClick}
+                    theme={currentTheme}
+                  />
+                ))}
+              </div>
             ))}
             {isLoading && (
               <div className="flex justify-start items-center gap-3 my-5">
