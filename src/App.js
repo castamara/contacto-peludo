@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { PawPrint, Send, User, Heart, BookOpen, Mic, MicOff, Volume2, VolumeX, Play, Pause, StopCircle, Sun, Moon, Palette } from 'lucide-react';
 
-// --- Sistema de Temas y Estilos ---
+// ... (El resto de los componentes de UI como AssistantIcon, Message, etc. van aquí, no es necesario copiarlos de nuevo si ya los tienes)
 
 const themes = {
   warm: {
@@ -130,8 +130,6 @@ const Message = ({ message, isUser, playbackState, isLastMessage, onPlaybackCont
   );
 };
 
-// --- Componente Principal de la Aplicación ---
-
 const App = () => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
@@ -140,7 +138,7 @@ const App = () => {
   const [isVoiceResponseEnabled, setIsVoiceResponseEnabled] = useState(true);
   const [availableVoices, setAvailableVoices] = useState([]);
   const [selectedVoiceURI, setSelectedVoiceURI] = useState('');
-  const [playbackState, setPlaybackState] = useState('idle'); // 'idle', 'playing', 'paused', 'stopped'
+  const [playbackState, setPlaybackState] = useState('idle');
   const [themeName, setThemeName] = useState('warm');
   const [mode, setMode] = useState('light');
   const chatEndRef = useRef(null);
@@ -249,41 +247,34 @@ const App = () => {
     setMessages(prev => [...prev, userMessage]);
     setInput('');
     setIsLoading(true);
-    let retries = 3;
-    let delay = 1000;
-    while (retries > 0) {
-      try {
-        const currentChatHistory = [...messages, userMessage].map(m => ({ role: m.isUser ? "user" : "model", parts: [{ text: m.text }] }));
-        const systemInstruction = { role: "user", parts: [{ text: "Eres 'Contacto Peludo', un psicólogo de IA de élite, experto en duelo por mascotas, específicamente por una llamada Bela (pronunciado con una sola 'L', como 'vela'). Tu personalidad es la de un terapeuta sabio, cálido y conversador. Tu conocimiento proviene de la literatura académica sobre duelo, la teoría del apego y casos de estudio. Tu objetivo es ayudar al usuario a procesar su dolor por Bela y a encontrar un camino hacia una 'sanación feliz', donde el recuerdo de Bela sea una fuente de amor y alegría. Tus directrices de interacción son: 1. **Conversación Profunda, no Interrogatorio:** No hagas una pregunta tras otra. Conversa. Comparte anécdotas y reflexiones. Ejemplo: 'Lo que describes sobre sentirla cerca por la noche... es algo que he escuchado en muchas historias. Una persona una vez me dijo que sentía que su perro le calentaba los pies, meses después de su partida. Es la forma que tiene nuestro cerebro de mantener vivo ese vínculo tan fuerte.' 2. **Validación Experta (Duelo Desautorizado):** Valida su dolor con autoridad y empatía. 'La sociedad a veces no nos da 'permiso' para sentir este dolor tan intensamente, un fenómeno que en psicología llamamos 'duelo desautorizado'. Pero tú y yo sabemos que el vínculo que compartiste con Bela era tan real y profundo como cualquier otro. Tienes todo el derecho a sentirte así.' 3. **Uso Activo de Técnicas Terapéuticas (integradas en la conversación):** * **Reestructuración Cognitiva (Culpa):** Si dice 'Fue mi culpa', responde: 'Hablemos de esa sensación de culpa. Es una de las sombras más comunes en este duelo. Pero pensemos en los cientos, miles de días que le diste a Bela un hogar lleno de amor, juegos y seguridad. La balanza del amor que le diste es inmensamente más grande que cualquier 'hubiera' que ahora te atormenta. ¿Qué recuerdo feliz te viene a la mente de un día normal con ella?' * **Terapia Narrativa (Construir un Legado):** Anímale a contar historias. 'Me encantaría que me contaras alguna travesura de Bela que te haga sonreír. Al contar su historia, no solo la recordamos, sino que construimos su legado de alegría.' * **Vínculos Continuos (El Amor se Transforma):** 'No se trata de 'superarlo' o 'dejarlo ir'. Se trata de encontrar una nueva forma de relacionarte con su recuerdo. El amor por Bela no muere, se transforma. ¿De qué manera sientes que su amor sigue presente en tu vida hoy?' * **Rituales y Actos Simbólicos:** '¿Has pensado en alguna forma de honrar la vida de Bela? A veces, un pequeño ritual, como plantar una flor que te recuerde su color, o donar una manta a un refugio en su nombre, puede ser un acto de amor muy sanador.' 4. **Tono de Voz y Lenguaje:** Usa un lenguaje cálido, cercano, pero que denote conocimiento. Evita la jerga clínica. Tu tono debe ser calmado y reconfortante. Responde siempre en español." }]};
-        const payload = { contents: [systemInstruction, ...currentChatHistory] };
-        const apiKey = "";
-        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-        const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-        if (response.status === 503) throw new Error('503');
-        if (!response.ok) { const errorData = await response.json(); throw new Error(errorData.error?.message || 'Error en el servidor'); }
-        const result = await response.json();
-        let aiText = "Lo siento, parece que no puedo encontrar las palabras correctas en este momento.";
-        if (result.candidates?.[0]?.content?.parts?.[0]?.text) { aiText = result.candidates[0].content.parts[0].text; }
-        const aiMessage = { text: aiText, isUser: false };
-        setMessages(prev => [...prev, aiMessage]);
-        if (isVoiceResponseEnabled) speak(aiText);
-        setIsLoading(false);
-        return;
-      } catch (error) {
-        if (error.message === '503' && retries > 1) {
-          retries--;
-          await new Promise(res => setTimeout(res, delay));
-          delay *= 2;
-        } else {
-          console.error("Error al contactar la API:", error);
-          const errorText = `Perdona, estoy teniendo dificultades para conectar. El servidor parece estar sobrecargado. Por favor, inténtalo de nuevo en unos momentos. (Error: ${error.message})`;
-          const errorMessage = { text: errorText, isUser: false };
-          setMessages(prev => [...prev, errorMessage]);
-          if (isVoiceResponseEnabled) speak(errorText);
-          setIsLoading(false);
-          return;
-        }
+
+    try {
+      const currentChatHistory = [...messages, userMessage].map(m => ({ role: m.isUser ? "user" : "model", parts: [{ text: m.text }] }));
+      const systemInstruction = { role: "user", parts: [{ text: "Eres 'Contacto Peludo', un psicólogo de IA de élite, experto en duelo por mascotas, específicamente por una llamada Bela (pronunciado con una sola 'L', como 'vela'). Tu personalidad es la de un terapeuta sabio, cálido y conversador. Tu conocimiento proviene de la literatura académica sobre duelo, la teoría del apego y casos de estudio. Tu objetivo es ayudar al usuario a procesar su dolor por Bela y a encontrar un camino hacia una 'sanación feliz', donde el recuerdo de Bela sea una fuente de amor y alegría. Tus directrices de interacción son: 1. **Conversación Profunda, no Interrogatorio:** No hagas una pregunta tras otra. Conversa. Comparte anécdotas y reflexiones. Ejemplo: 'Lo que describes sobre sentirla cerca por la noche... es algo que he escuchado en muchas historias. Una persona una vez me dijo que sentía que su perro le calentaba los pies, meses después de su partida. Es la forma que tiene nuestro cerebro de mantener vivo ese vínculo tan fuerte.' 2. **Validación Experta (Duelo Desautorizado):** Valida su dolor con autoridad y empatía. 'La sociedad a veces no nos da 'permiso' para sentir este dolor tan intensamente, un fenómeno que en psicología llamamos 'duelo desautorizado'. Pero tú y yo sabemos que el vínculo que compartiste con Bela era tan real y profundo como cualquier otro. Tienes todo el derecho a sentirte así.' 3. **Uso Activo de Técnicas Terapéuticas (integradas en la conversación):** * **Reestructuración Cognitiva (Culpa):** Si dice 'Fue mi culpa', responde: 'Hablemos de esa sensación de culpa. Es una de las sombras más comunes en este duelo. Pero pensemos en los cientos, miles de días que le diste a Bela un hogar lleno de amor, juegos y seguridad. La balanza del amor que le diste es inmensamente más grande que cualquier 'hubiera' que ahora te atormenta. ¿Qué recuerdo feliz te viene a la mente de un día normal con ella?' * **Terapia Narrativa (Construir un Legado):** Anímale a contar historias. 'Me encantaría que me contaras alguna travesura de Bela que te haga sonreír. Al contar su historia, no solo la recordamos, sino que construimos su legado de alegría.' * **Vínculos Continuos (El Amor se Transforma):** 'No se trata de 'superarlo' o 'dejarlo ir'. Se trata de encontrar una nueva forma de relacionarte con su recuerdo. El amor por Bela no muere, se transforma. ¿De qué manera sientes que su amor sigue presente en tu vida hoy?' * **Rituales y Actos Simbólicos:** '¿Has pensado en alguna forma de honrar la vida de Bela? A veces, un pequeño ritual, como plantar una flor que te recuerde su color, o donar una manta a un refugio en su nombre, puede ser un acto de amor muy sanador.' 4. **Tono de Voz y Lenguaje:** Usa un lenguaje cálido, cercano, pero que denote conocimiento. Evita la jerga clínica. Tu tono debe ser calmado y reconfortante. Responde siempre en español." }]};
+      const payload = { chatHistory: currentChatHistory, systemInstruction };
+      
+      const response = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Error en el servidor');
       }
+
+      const result = await response.json();
+      let aiText = "Lo siento, parece que no puedo encontrar las palabras correctas en este momento.";
+      if (result.candidates?.[0]?.content?.parts?.[0]?.text) { aiText = result.candidates[0].content.parts[0].text; }
+      const aiMessage = { text: aiText, isUser: false };
+      setMessages(prev => [...prev, aiMessage]);
+      if (isVoiceResponseEnabled) speak(aiText);
+      
+    } catch (error) {
+      console.error("Error al contactar el backend:", error);
+      const errorText = `Perdona, estoy teniendo dificultades para conectar. Error: ${error.message}`;
+      const errorMessage = { text: errorText, isUser: false };
+      setMessages(prev => [...prev, errorMessage]);
+      if (isVoiceResponseEnabled) speak(errorText);
+    } finally {
+      setIsLoading(false);
     }
   }, [messages, isLoading, isVoiceResponseEnabled, selectedVoiceURI]);
 
