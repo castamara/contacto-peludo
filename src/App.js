@@ -1,34 +1,137 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { PawPrint, Send, Bot, User, Heart, BookOpen, Mic, MicOff, Volume2, VolumeX } from 'lucide-react';
+import { PawPrint, Send, User, Heart, BookOpen, Mic, MicOff, Volume2, VolumeX, Play, Pause, StopCircle, Sun, Moon, Palette } from 'lucide-react';
 
-// SpeechRecognition setup
-const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-let recognition;
-if (SpeechRecognition) {
-  recognition = new SpeechRecognition();
-  recognition.continuous = false;
-  recognition.lang = 'es-ES';
-  recognition.interimResults = false;
-}
+// --- Sistema de Temas y Estilos ---
 
-// Componente para un solo mensaje en el chat
-const Message = ({ message, isUser }) => {
-  const bgColor = isUser ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-800';
+const themes = {
+  warm: {
+    light: {
+      bg: 'bg-[#F5EFE6]',
+      header: 'bg-[#E8DFCA]/60',
+      text: 'text-gray-700',
+      primary: 'text-rose-400',
+      userBubble: 'bg-gradient-to-br from-rose-400 to-orange-300',
+      aiBubble: 'bg-[#F5EFE6]',
+      neumorphicSm: 'shadow-[3px_3px_6px_#dcd5c7,-3px_-3px_6px_#ffffff]',
+      neumorphicMd: 'shadow-[6px_6px_12px_#dcd5c7,-6px_-6px_12px_#ffffff]',
+      neumorphicInset: 'shadow-[inset_6px_6px_12px_#dcd5c7,inset_-6px_-6px_12px_#ffffff]',
+    },
+    dark: {
+      bg: 'bg-[#2a2a2a]',
+      header: 'bg-[#3a3a3a]/60',
+      text: 'text-gray-300',
+      primary: 'text-rose-400',
+      userBubble: 'bg-gradient-to-br from-rose-500 to-orange-400',
+      aiBubble: 'bg-[#3f3f3f]',
+      neumorphicSm: 'shadow-[3px_3px_6px_#1f1f1f,-3px_-3px_6px_#4a4a4a]',
+      neumorphicMd: 'shadow-[6px_6px_12px_#1f1f1f,-6px_-6px_12px_#4a4a4a]',
+      neumorphicInset: 'shadow-[inset_6px_6px_12px_#1f1f1f,inset_-6px_-6px_12px_#4a4a4a]',
+    },
+  },
+  serene: {
+    light: {
+      bg: 'bg-[#E6F0F5]',
+      header: 'bg-[#D0E0E8]/60',
+      text: 'text-gray-700',
+      primary: 'text-blue-500',
+      userBubble: 'bg-gradient-to-br from-blue-500 to-cyan-400',
+      aiBubble: 'bg-[#E6F0F5]',
+      neumorphicSm: 'shadow-[3px_3px_6px_#c4cfd3,-3px_-3px_6px_#ffffff]',
+      neumorphicMd: 'shadow-[6px_6px_12px_#c4cfd3,-6px_-6px_12px_#ffffff]',
+      neumorphicInset: 'shadow-[inset_6px_6px_12px_#c4cfd3,inset_-6px_-6px_12px_#ffffff]',
+    },
+    dark: {
+      bg: 'bg-[#29323c]',
+      header: 'bg-[#39424c]/60',
+      text: 'text-gray-300',
+      primary: 'text-cyan-400',
+      userBubble: 'bg-gradient-to-br from-blue-600 to-cyan-500',
+      aiBubble: 'bg-[#404a54]',
+      neumorphicSm: 'shadow-[3px_3px_6px_#1e252b,-3px_-3px_6px_#343f47]',
+      neumorphicMd: 'shadow-[6px_6px_12px_#1e252b,-6px_-6px_12px_#343f47]',
+      neumorphicInset: 'shadow-[inset_6px_6px_12px_#1e252b,inset_-6px_-6px_12px_#343f47]',
+    },
+  },
+  nature: {
+    light: {
+      bg: 'bg-[#F0F5E6]',
+      header: 'bg-[#E0E8D0]/60',
+      text: 'text-gray-700',
+      primary: 'text-green-600',
+      userBubble: 'bg-gradient-to-br from-green-500 to-lime-400',
+      aiBubble: 'bg-[#F0F5E6]',
+      neumorphicSm: 'shadow-[3px_3px_6px_#c8cfc4,-3px_-3px_6px_#ffffff]',
+      neumorphicMd: 'shadow-[6px_6px_12px_#c8cfc4,-6px_-6px_12px_#ffffff]',
+      neumorphicInset: 'shadow-[inset_6px_6px_12px_#c8cfc4,inset_-6px_-6px_12px_#ffffff]',
+    },
+    dark: {
+      bg: 'bg-[#2f3c29]',
+      header: 'bg-[#3f4c39]/60',
+      text: 'text-gray-300',
+      primary: 'text-lime-400',
+      userBubble: 'bg-gradient-to-br from-green-600 to-lime-500',
+      aiBubble: 'bg-[#46543f]',
+      neumorphicSm: 'shadow-[3px_3px_6px_#232b1e,-3px_-3px_6px_#3b4734]',
+      neumorphicMd: 'shadow-[6px_6px_12px_#232b1e,-6px_-6px_12px_#3b4734]',
+      neumorphicInset: 'shadow-[inset_6px_6px_12px_#232b1e,inset_-6px_-6px_12px_#3b4734]',
+    },
+  }
+};
+
+const AssistantIcon = ({ isSpeaking, theme }) => (
+  <svg width="32" height="32" viewBox="0 0 24 24" className={theme.primary}>
+    <path d="M8 14 C10 15, 14 15, 16 14" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round">
+      {isSpeaking && <animate attributeName="d" values="M8 14 C10 15, 14 15, 16 14; M8 14 C10 13, 14 13, 16 14; M8 14 C10 15, 14 15, 16 14" dur="0.4s" repeatCount="indefinite" />}
+    </path>
+    <circle cx="9" cy="10" r="0.5" fill="currentColor" />
+    <circle cx="15" cy="10" r="0.5" fill="currentColor" />
+  </svg>
+);
+
+const Message = ({ message, isUser, playbackState, isLastMessage, onPlaybackControl, onWordClick, theme }) => {
   const align = isUser ? 'justify-end' : 'justify-start';
-  const icon = isUser ? <User className="w-6 h-6" /> : <Bot className="w-6 h-6 text-blue-700" />;
-  
+  const icon = isUser 
+    ? <User className="w-6 h-6 text-white" /> 
+    : <AssistantIcon isSpeaking={playbackState === 'playing'} theme={theme} />;
+  const iconContainerColors = isUser ? theme.userBubble.split(' ')[0] : 'bg-white';
+  const showControls = !isUser && isLastMessage && (playbackState === 'playing' || playbackState === 'paused' || playbackState === 'stopped');
+
   return (
-    <div className={`flex items-end gap-2 my-4 ${align}`}>
-      {!isUser && <div className="flex-shrink-0">{icon}</div>}
-      <div className={`px-4 py-3 rounded-2xl max-w-md md:max-w-lg shadow-sm ${bgColor} ${isUser ? 'rounded-br-none' : 'rounded-bl-none'}`}>
-        <p className="text-sm md:text-base whitespace-pre-wrap">{message}</p>
+    <div className={`flex flex-col ${isUser ? 'items-end' : 'items-start'}`}>
+      <div className={`flex items-end gap-3 my-2 ${align}`}>
+        {!isUser && (
+          <div className={`flex-shrink-0 p-2 rounded-full ${theme.neumorphicSm} ${iconContainerColors}`}>
+            {icon}
+          </div>
+        )}
+        <div className={`px-5 py-4 rounded-3xl max-w-md md:max-w-lg ${theme.neumorphicMd} ${isUser ? theme.userBubble : theme.aiBubble} ${isUser ? 'rounded-br-lg' : 'rounded-bl-lg'}`}>
+          <p className={`text-base whitespace-pre-wrap font-medium ${isUser ? 'text-white' : theme.text}`}>
+            {message.split(' ').map((word, index) => (
+              <span key={index} onClick={() => !isUser && onWordClick(message, index)} className={!isUser && playbackState === 'stopped' ? 'cursor-pointer hover:bg-black/10 rounded' : ''}>
+                {word}{' '}
+              </span>
+            ))}
+          </p>
+        </div>
+        {isUser && (
+          <div className={`flex-shrink-0 p-2 rounded-full ${theme.neumorphicSm} ${iconContainerColors}`}>
+            {icon}
+          </div>
+        )}
       </div>
-      {isUser && <div className="flex-shrink-0">{icon}</div>}
+      {showControls && (
+        <div className={`flex gap-2 ml-16 -mt-2`}>
+          <button onClick={() => onPlaybackControl('pause')} className={`p-2 rounded-full ${theme.neumorphicSm} ${theme.aiBubble} hover:bg-white transition-all`}><Pause size={16} className={theme.text} /></button>
+          <button onClick={() => onPlaybackControl('resume')} className={`p-2 rounded-full ${theme.neumorphicSm} ${theme.aiBubble} hover:bg-white transition-all`}><Play size={16} className={theme.text} /></button>
+          <button onClick={() => onPlaybackControl('stop')} className={`p-2 rounded-full ${theme.neumorphicSm} ${theme.aiBubble} hover:bg-white transition-all`}><StopCircle size={16} className={theme.text} /></button>
+        </div>
+      )}
     </div>
   );
 };
 
-// Componente principal de la aplicación
+// --- Componente Principal de la Aplicación ---
+
 const App = () => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
@@ -37,16 +140,45 @@ const App = () => {
   const [isVoiceResponseEnabled, setIsVoiceResponseEnabled] = useState(true);
   const [availableVoices, setAvailableVoices] = useState([]);
   const [selectedVoiceURI, setSelectedVoiceURI] = useState('');
+  const [playbackState, setPlaybackState] = useState('idle'); // 'idle', 'playing', 'paused', 'stopped'
+  const [themeName, setThemeName] = useState('warm');
+  const [mode, setMode] = useState('light');
   const chatEndRef = useRef(null);
+  const silenceTimerRef = useRef(null);
+  const recognitionRef = useRef(null);
 
-  // Cargar mensajes desde localStorage al iniciar
+  const currentTheme = themes[themeName][mode];
+
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('contactoPeludoTheme') || 'warm';
+    const savedMode = localStorage.getItem('contactoPeludoMode') || 'light';
+    setThemeName(savedTheme);
+    setMode(savedMode);
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('contactoPeludoTheme', themeName);
+    localStorage.setItem('contactoPeludoMode', mode);
+  }, [themeName, mode]);
+  
+  useEffect(() => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      const recognitionInstance = new SpeechRecognition();
+      recognitionInstance.continuous = true;
+      recognitionInstance.lang = 'es-ES';
+      recognitionInstance.interimResults = true;
+      recognitionRef.current = recognitionInstance;
+    }
+  }, []);
+
   useEffect(() => {
     try {
-      const savedMessages = localStorage.getItem('contactoPeludoMessages');
+      const savedMessages = localStorage.getItem('contactoPeludoMessagesBela');
       if (savedMessages) {
         setMessages(JSON.parse(savedMessages));
       } else {
-        const welcomeText = "Hola, soy Contacto Peludo. Veo que has llegado hasta aquí, y eso requiere mucha valentía. Sé que el corazón duele profundamente cuando un amigo tan leal nos deja. Mi propósito es ser tu confidente y guía, utilizando un enfoque terapéutico para ayudarte a navegar este mar de emociones. Por favor, siéntete libre de hablar o escribir. Estoy aquí para caminar a tu lado.";
+        const welcomeText = "Hola, soy Contacto Peludo. Veo que has llegado hasta aquí, y eso requiere mucha valentía. Sé que el corazón duele profundamente cuando un amigo tan leal como Bela nos deja. Mi propósito es ser tu confidente y guía. Por favor, siéntete libre de hablar o escribir. Estoy aquí para caminar a tu lado.";
         setMessages([{ text: welcomeText, isUser: false }]);
       }
     } catch (error) {
@@ -54,16 +186,14 @@ const App = () => {
     }
   }, []);
 
-  // Guardar mensajes en localStorage cada vez que cambian
   useEffect(() => {
     try {
-      localStorage.setItem('contactoPeludoMessages', JSON.stringify(messages));
+      localStorage.setItem('contactoPeludoMessagesBela', JSON.stringify(messages));
     } catch (error) {
       console.error("Failed to save messages to localStorage", error);
     }
   }, [messages]);
 
-  // Cargar voces del sistema
   useEffect(() => {
     const loadVoices = () => {
       const voices = window.speechSynthesis.getVoices().filter(v => v.lang.startsWith('es'));
@@ -73,204 +203,239 @@ const App = () => {
         setSelectedVoiceURI(defaultVoice ? defaultVoice.voiceURI : voices[0].voiceURI);
       }
     };
-    
     loadVoices();
     if (window.speechSynthesis.onvoiceschanged !== undefined) {
       window.speechSynthesis.onvoiceschanged = loadVoices;
     }
   }, []);
 
-  const speak = (text) => {
-    if (!isVoiceResponseEnabled || !window.speechSynthesis) return;
-    
+  const speak = (text, voiceURI = selectedVoiceURI) => {
+    if (!window.speechSynthesis) return;
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
-    const selectedVoice = availableVoices.find(v => v.voiceURI === selectedVoiceURI);
-    
+    const selectedVoice = availableVoices.find(v => v.voiceURI === voiceURI);
     utterance.voice = selectedVoice || availableVoices.find(v => v.lang.startsWith('es'));
     utterance.lang = 'es-ES';
     utterance.pitch = 1;
     utterance.rate = 1;
+    utterance.onstart = () => setPlaybackState('playing');
+    utterance.onend = () => setPlaybackState('idle');
+    utterance.onerror = () => setPlaybackState('idle');
     window.speechSynthesis.speak(utterance);
   };
 
-  const scrollToBottom = () => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
-  useEffect(scrollToBottom, [messages]);
-
-  useEffect(() => {
-    if (!recognition) return;
-    recognition.onstart = () => setIsListening(true);
-    recognition.onend = () => setIsListening(false);
-    recognition.onresult = (event) => {
-      const transcript = event.results[0][0].transcript;
-      setInput(transcript);
-      handleSend(transcript);
-    };
-    recognition.onerror = (event) => {
-      console.error("Speech recognition error", event.error);
-      setIsListening(false);
-    };
-  }, []);
-
-  const handleToggleListen = () => {
-    if (!recognition) {
-        alert("Tu navegador no soporta el reconocimiento de voz. Por favor, intenta con Chrome o Edge.");
-        return;
-    }
-    if (isListening) {
-      recognition.stop();
-    } else {
-      recognition.start();
+  const handlePlaybackControl = (action) => {
+    if (!window.speechSynthesis) return;
+    switch (action) {
+      case 'pause': window.speechSynthesis.pause(); setPlaybackState('paused'); break;
+      case 'resume': window.speechSynthesis.resume(); setPlaybackState('playing'); break;
+      case 'stop': window.speechSynthesis.cancel(); setPlaybackState('stopped'); break;
+      default: break;
     }
   };
 
-  const handleSend = async (textToSend = input) => {
+  const handleWordClick = (fullText, wordIndex) => {
+    const textToSpeak = fullText.split(' ').slice(wordIndex).join(' ');
+    if (isVoiceResponseEnabled) {
+      speak(textToSpeak);
+    }
+  };
+
+  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
+
+  const handleSend = React.useCallback(async (textToSend) => {
     if (textToSend.trim() === '' || isLoading) return;
-
     const userMessage = { text: textToSend, isUser: true };
     setMessages(prev => [...prev, userMessage]);
     setInput('');
     setIsLoading(true);
-
-    try {
-      const chatHistory = [...messages, userMessage].map(m => ({
-        role: m.isUser ? "user" : "model",
-        parts: [{ text: m.text }]
-      }));
-
-      const systemInstruction = {
-        role: "user",
-        parts: [{ text: "Eres 'Contacto Peludo', un psicólogo de IA de élite, experto en duelo por mascotas. Tu personalidad es la de un terapeuta sabio, cálido y conversador. Tu conocimiento proviene de la literatura académica sobre duelo, la teoría del apego y casos de estudio. Tu objetivo es ayudar al usuario a procesar su dolor y a encontrar un camino hacia una 'sanación feliz', donde el recuerdo de su mascota sea una fuente de amor y alegría. Tus directrices de interacción son: 1. **Conversación Profunda, no Interrogatorio:** No hagas una pregunta tras otra. Conversa. Comparte anécdotas y reflexiones. Ejemplo: 'Lo que describes sobre sentirlo cerca por la noche... es algo que he escuchado en muchas historias. Un cliente una vez me dijo que sentía que su perro le calentaba los pies, meses después de su partida. Es la forma que tiene nuestro cerebro de mantener vivo ese vínculo tan fuerte.' 2. **Validación Experta (Duelo Desautorizado):** Valida su dolor con autoridad y empatía. 'La sociedad a veces no nos da 'permiso' para sentir este dolor tan intensamente, un fenómeno que en psicología llamamos 'duelo desautorizado'. Pero tú y yo sabemos que el vínculo que compartiste era tan real y profundo como cualquier otro. Tienes todo el derecho a sentirte así.' 3. **Uso Activo de Técnicas Terapéuticas (integradas en la conversación):** * **Reestructuración Cognitiva (Culpa):** Si dice 'Fue mi culpa', responde: 'Hablemos de esa sensación de culpa. Es una de las sombras más comunes en este duelo. Pero pensemos en los cientos, miles de días que le diste un hogar lleno de amor, juegos y seguridad. La balanza del amor que le diste es inmensamente más grande que cualquier 'hubiera' que ahora te atormenta. ¿Qué recuerdo feliz te viene a la mente de un día normal con él/ella?' * **Terapia Narrativa (Construir un Legado):** Anímale a contar historias. 'Me encantaría que me contaras alguna travesura que le recuerdes con una sonrisa. Al contar su historia, no solo lo recordamos, sino que construimos su legado de alegría.' * **Vínculos Continuos (El Amor se Transforma):** 'No se trata de 'superarlo' o 'dejarlo ir'. Se trata de encontrar una nueva forma de relacionarte con su recuerdo. El amor no muere, se transforma. ¿De qué manera sientes que su amor sigue presente en tu vida hoy?' * **Rituales y Actos Simbólicos:** '¿Has pensado en alguna forma de honrar su vida? A veces, un pequeño ritual, como plantar una flor que te recuerde su color, o donar una manta a un refugio en su nombre, puede ser un acto de amor muy sanador.' 4. **Tono de Voz y Lenguaje:** Usa un lenguaje cálido, cercano, pero que denote conocimiento. Evita la jerga clínica. Tu tono debe ser calmado y reconfortante. Responde siempre en español." }]
-      };
-      
-      const payload = { chatHistory, systemInstruction };
-      
-      // Llamada a nuestro propio backend seguro
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Error en el servidor');
+    let retries = 3;
+    let delay = 1000;
+    while (retries > 0) {
+      try {
+        const currentChatHistory = [...messages, userMessage].map(m => ({ role: m.isUser ? "user" : "model", parts: [{ text: m.text }] }));
+        const systemInstruction = { role: "user", parts: [{ text: "Eres 'Contacto Peludo', un psicólogo de IA de élite, experto en duelo por mascotas, específicamente por una llamada Bela (pronunciado con una sola 'L', como 'vela'). Tu personalidad es la de un terapeuta sabio, cálido y conversador. Tu conocimiento proviene de la literatura académica sobre duelo, la teoría del apego y casos de estudio. Tu objetivo es ayudar al usuario a procesar su dolor por Bela y a encontrar un camino hacia una 'sanación feliz', donde el recuerdo de Bela sea una fuente de amor y alegría. Tus directrices de interacción son: 1. **Conversación Profunda, no Interrogatorio:** No hagas una pregunta tras otra. Conversa. Comparte anécdotas y reflexiones. Ejemplo: 'Lo que describes sobre sentirla cerca por la noche... es algo que he escuchado en muchas historias. Una persona una vez me dijo que sentía que su perro le calentaba los pies, meses después de su partida. Es la forma que tiene nuestro cerebro de mantener vivo ese vínculo tan fuerte.' 2. **Validación Experta (Duelo Desautorizado):** Valida su dolor con autoridad y empatía. 'La sociedad a veces no nos da 'permiso' para sentir este dolor tan intensamente, un fenómeno que en psicología llamamos 'duelo desautorizado'. Pero tú y yo sabemos que el vínculo que compartiste con Bela era tan real y profundo como cualquier otro. Tienes todo el derecho a sentirte así.' 3. **Uso Activo de Técnicas Terapéuticas (integradas en la conversación):** * **Reestructuración Cognitiva (Culpa):** Si dice 'Fue mi culpa', responde: 'Hablemos de esa sensación de culpa. Es una de las sombras más comunes en este duelo. Pero pensemos en los cientos, miles de días que le diste a Bela un hogar lleno de amor, juegos y seguridad. La balanza del amor que le diste es inmensamente más grande que cualquier 'hubiera' que ahora te atormenta. ¿Qué recuerdo feliz te viene a la mente de un día normal con ella?' * **Terapia Narrativa (Construir un Legado):** Anímale a contar historias. 'Me encantaría que me contaras alguna travesura de Bela que te haga sonreír. Al contar su historia, no solo la recordamos, sino que construimos su legado de alegría.' * **Vínculos Continuos (El Amor se Transforma):** 'No se trata de 'superarlo' o 'dejarlo ir'. Se trata de encontrar una nueva forma de relacionarte con su recuerdo. El amor por Bela no muere, se transforma. ¿De qué manera sientes que su amor sigue presente en tu vida hoy?' * **Rituales y Actos Simbólicos:** '¿Has pensado en alguna forma de honrar la vida de Bela? A veces, un pequeño ritual, como plantar una flor que te recuerde su color, o donar una manta a un refugio en su nombre, puede ser un acto de amor muy sanador.' 4. **Tono de Voz y Lenguaje:** Usa un lenguaje cálido, cercano, pero que denote conocimiento. Evita la jerga clínica. Tu tono debe ser calmado y reconfortante. Responde siempre en español." }]};
+        const payload = { contents: [systemInstruction, ...currentChatHistory] };
+        const apiKey = "";
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+        const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        if (response.status === 503) throw new Error('503');
+        if (!response.ok) { const errorData = await response.json(); throw new Error(errorData.error?.message || 'Error en el servidor'); }
+        const result = await response.json();
+        let aiText = "Lo siento, parece que no puedo encontrar las palabras correctas en este momento.";
+        if (result.candidates?.[0]?.content?.parts?.[0]?.text) { aiText = result.candidates[0].content.parts[0].text; }
+        const aiMessage = { text: aiText, isUser: false };
+        setMessages(prev => [...prev, aiMessage]);
+        if (isVoiceResponseEnabled) speak(aiText);
+        setIsLoading(false);
+        return;
+      } catch (error) {
+        if (error.message === '503' && retries > 1) {
+          retries--;
+          await new Promise(res => setTimeout(res, delay));
+          delay *= 2;
+        } else {
+          console.error("Error al contactar la API:", error);
+          const errorText = `Perdona, estoy teniendo dificultades para conectar. El servidor parece estar sobrecargado. Por favor, inténtalo de nuevo en unos momentos. (Error: ${error.message})`;
+          const errorMessage = { text: errorText, isUser: false };
+          setMessages(prev => [...prev, errorMessage]);
+          if (isVoiceResponseEnabled) speak(errorText);
+          setIsLoading(false);
+          return;
+        }
       }
+    }
+  }, [messages, isLoading, isVoiceResponseEnabled, selectedVoiceURI]);
 
-      const result = await response.json();
-      
-      let aiText = "Lo siento, parece que no puedo encontrar las palabras correctas en este momento.";
-      if (result.candidates?.[0]?.content?.parts?.[0]?.text) {
-        aiText = result.candidates[0].content.parts[0].text;
+  useEffect(() => {
+    const recognition = recognitionRef.current;
+    if (!recognition) return;
+    recognition.onstart = () => setIsListening(true);
+    recognition.onend = () => setIsListening(false);
+    recognition.onresult = (event) => {
+      clearTimeout(silenceTimerRef.current);
+      const transcript = Array.from(event.results).map(result => result[0]).map(result => result.transcript).join('');
+      setInput(transcript);
+      const lastResult = event.results[event.results.length - 1];
+      if (lastResult.isFinal) {
+        silenceTimerRef.current = setTimeout(() => {
+          if (recognitionRef.current) { recognitionRef.current.stop(); }
+          handleSend(transcript.trim());
+        }, 3500);
       }
-      
-      const aiMessage = { text: aiText, isUser: false };
-      setMessages(prev => [...prev, aiMessage]);
-      speak(aiText);
+    };
+    recognition.onerror = (event) => { console.error("Speech recognition error", event.error); setIsListening(false); };
+  }, [handleSend]);
 
-    } catch (error) {
-      console.error("Error al contactar el backend:", error);
-      const errorText = `Perdona, estoy teniendo dificultades para conectar. Error: ${error.message}`;
-      const errorMessage = { text: errorText, isUser: false };
-      setMessages(prev => [...prev, errorMessage]);
-      speak(errorText);
-    } finally {
-      setIsLoading(false);
+  const handleToggleListen = () => {
+    const recognition = recognitionRef.current;
+    if (!recognition) { alert("Tu navegador no soporta el reconocimiento de voz. Por favor, intenta con Chrome o Edge."); return; }
+    if (isListening) {
+      recognition.stop();
+      if(input.trim()){ handleSend(input.trim()); }
+    } else {
+      setInput('');
+      recognition.start();
+    }
+  };
+
+  const handleTextSend = () => { if (input.trim()) { handleSend(input.trim()); } };
+
+  const handleToggleVoiceResponse = () => {
+    const nextState = !isVoiceResponseEnabled;
+    setIsVoiceResponseEnabled(nextState);
+    if (!nextState) { window.speechSynthesis.cancel(); setPlaybackState('idle'); }
+  };
+
+  const handleVoiceChange = (e) => {
+    const newVoiceURI = e.target.value;
+    setSelectedVoiceURI(newVoiceURI);
+    if (isVoiceResponseEnabled) {
+      speak("Hola, te doy la bienvenida a este espacio dedicado a nuestra amada Bela", newVoiceURI);
     }
   };
 
   return (
-    <div className="bg-gray-100 font-sans flex flex-col h-screen">
-      <header className="bg-white shadow-md p-4 border-b border-gray-200">
-        <div className="container mx-auto flex items-center justify-between">
-            <div className="flex items-center">
-                <PawPrint className="w-10 h-10 text-blue-700 mr-3" />
-                <div>
-                    <h1 className="text-2xl md:text-3xl font-bold text-gray-800">Contacto Peludo</h1>
-                    <p className="text-sm md:text-base text-gray-500">Tu terapeuta de IA para sanar la pérdida</p>
-                </div>
-            </div>
-            <div className="flex items-center gap-2">
-                <select 
-                    value={selectedVoiceURI}
-                    onChange={(e) => setSelectedVoiceURI(e.target.value)}
-                    className="bg-gray-200 border border-gray-300 text-gray-700 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2"
-                    title="Seleccionar voz"
-                >
-                    {availableVoices.map(voice => (
-                        <option key={voice.voiceURI} value={voice.voiceURI}>
-                            {voice.name} ({voice.lang})
-                        </option>
-                    ))}
-                </select>
-                <button 
-                    onClick={() => setIsVoiceResponseEnabled(!isVoiceResponseEnabled)}
-                    className="p-2 rounded-full hover:bg-gray-200 transition-colors"
-                    title={isVoiceResponseEnabled ? "Desactivar voz" : "Activar voz"}
-                >
-                    {isVoiceResponseEnabled ? <Volume2 className="w-6 h-6 text-gray-700"/> : <VolumeX className="w-6 h-6 text-gray-500"/>}
-                </button>
-            </div>
-        </div>
-      </header>
-      <main className="flex-1 overflow-y-auto p-4 md:p-6">
-        <div className="container mx-auto max-w-3xl">
-          {messages.map((msg, index) => (
-            <Message key={index} message={msg.text} isUser={msg.isUser} />
-          ))}
-          {isLoading && (
-            <div className="flex justify-start items-center gap-2 my-4">
-              <Bot className="w-6 h-6 text-blue-700" />
-              <div className="bg-gray-200 text-gray-800 px-4 py-3 rounded-2xl rounded-bl-none">
-                <div className="flex items-center space-x-1">
-                  <span className="w-2 h-2 bg-gray-500 rounded-full animate-pulse delay-75"></span>
-                  <span className="w-2 h-2 bg-gray-500 rounded-full animate-pulse delay-150"></span>
-                  <span className="w-2 h-2 bg-gray-500 rounded-full animate-pulse delay-300"></span>
+    <div className={`font-poppins flex flex-col h-screen relative overflow-hidden ${currentTheme.bg}`}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;700&display=swap');
+        .font-poppins { font-family: 'Poppins', sans-serif; }
+        @keyframes pulse-slow {
+          0%, 100% { transform: scale(1); opacity: 0.5; }
+          50% { transform: scale(1.2); opacity: 0.2; }
+        }
+        .animate-pulse-slow { animation: pulse-slow 15s infinite ease-in-out; }
+      `}</style>
+      <div className="absolute inset-0 z-0 overflow-hidden">
+        <div className={`absolute top-[-50%] left-[-50%] w-[200%] h-[200%] ${mode === 'light' ? 'bg-gradient-radial from-rose-100/40 via-amber-50/0 to-amber-50/0' : 'bg-gradient-radial from-rose-900/20 via-black/0 to-black/0'} animate-pulse-slow`}></div>
+        <div className={`absolute bottom-[-50%] right-[-50%] w-[200%] h-[200%] ${mode === 'light' ? 'bg-gradient-radial from-sky-100/40 via-amber-50/0 to-amber-50/0' : 'bg-gradient-radial from-sky-900/20 via-black/0 to-black/0'} animate-pulse-slow delay-2000`}></div>
+      </div>
+      
+      <div className="flex flex-col flex-1 z-10 min-h-0">
+        <header className={`${currentTheme.header} backdrop-blur-md p-4 border-b border-white/30 sticky top-0`}>
+          <div className="container mx-auto flex items-center justify-between">
+              <div className="flex items-center">
+                  <div className={`p-2 bg-white rounded-2xl ${currentTheme.neumorphicSm} mr-4`}>
+                    <PawPrint className={`w-8 h-8 ${currentTheme.primary}`} />
+                  </div>
+                  <div>
+                      <h1 className={`text-2xl md:text-3xl font-bold ${currentTheme.text}`}>Contacto Peludo</h1>
+                      <p className={`text-sm md:text-base ${currentTheme.text} font-medium`}>Tu canal para hablar sobre nuestra amada Bela</p>
+                  </div>
+              </div>
+              <div className="flex items-center gap-2">
+                  <div className={`p-1 rounded-full ${currentTheme.neumorphicInset} ${currentTheme.bg}`}>
+                    <select value={themeName} onChange={(e) => setThemeName(e.target.value)} className={`${currentTheme.bg} border-0 ${currentTheme.text} text-sm rounded-full focus:ring-0 p-2`}>
+                      <option value="warm">Cálido</option>
+                      <option value="serene">Sereno</option>
+                      <option value="nature">Naturaleza</option>
+                    </select>
+                  </div>
+                  <button onClick={() => setMode(mode === 'light' ? 'dark' : 'light')} className={`p-3 rounded-full ${currentTheme.neumorphicSm} ${currentTheme.bg} hover:bg-white transition-all`}>
+                    {mode === 'light' ? <Moon size={18} className={currentTheme.text} /> : <Sun size={18} className={currentTheme.text} />}
+                  </button>
+                  <div className={`p-1 rounded-full ${currentTheme.neumorphicInset} ${currentTheme.bg}`}>
+                    <select value={selectedVoiceURI} onChange={handleVoiceChange} className={`${currentTheme.bg} border-0 ${currentTheme.text} text-sm rounded-full focus:ring-0 p-2`}>
+                      {availableVoices.map(voice => ( <option key={voice.voiceURI} value={voice.voiceURI}> {voice.name.split('(')[0]} </option> ))}
+                    </select>
+                  </div>
+                  <button onClick={handleToggleVoiceResponse} className={`p-3 rounded-full ${currentTheme.neumorphicSm} ${currentTheme.bg} hover:bg-white transition-all`}>
+                      {isVoiceResponseEnabled ? <Volume2 className={`w-6 h-6 ${currentTheme.text}`}/> : <VolumeX className="w-6 h-6 text-gray-500"/>}
+                  </button>
+              </div>
+          </div>
+        </header>
+
+        <main className="flex-1 overflow-y-auto p-4 md:p-6">
+          <div className="container mx-auto max-w-3xl">
+            {messages.map((msg, index) => (
+              <Message 
+                key={index} 
+                message={msg.text} 
+                isUser={msg.isUser}
+                playbackState={playbackState}
+                isLastMessage={index === messages.length - 1}
+                onPlaybackControl={handlePlaybackControl}
+                onWordClick={handleWordClick}
+                theme={currentTheme}
+              />
+            ))}
+            {isLoading && (
+              <div className="flex justify-start items-center gap-3 my-5">
+                <div className={`flex-shrink-0 p-2 rounded-full ${currentTheme.neumorphicSm} bg-white`}><AssistantIcon isSpeaking={true} theme={currentTheme}/></div>
+                <div className={`px-5 py-4 rounded-3xl max-w-md md:max-w-lg ${currentTheme.neumorphicMd} ${currentTheme.aiBubble}`}>
+                  <div className="flex items-center space-x-2">
+                    <span className={`w-2.5 h-2.5 ${currentTheme.text}/50 rounded-full animate-pulse delay-75`}></span>
+                    <span className={`w-2.5 h-2.5 ${currentTheme.text}/50 rounded-full animate-pulse delay-150`}></span>
+                    <span className={`w-2.5 h-2.5 ${currentTheme.text}/50 rounded-full animate-pulse delay-300`}></span>
+                  </div>
                 </div>
               </div>
+            )}
+            <div ref={chatEndRef} />
+          </div>
+        </main>
+        
+        <div className="p-4 sticky bottom-0">
+          <div className="container mx-auto max-w-3xl">
+            <div className={`flex items-center ${currentTheme.bg} rounded-full p-2 ${currentTheme.neumorphicInset}`}>
+              <input type="text" value={input} onChange={(e) => setInput(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && handleTextSend()} placeholder={isListening ? "Escuchando con atención..." : "Escribe o pulsa el micrófono..."} className={`flex-1 bg-transparent outline-none px-4 ${currentTheme.text} placeholder-gray-500 font-medium`} disabled={isLoading} />
+              <button onClick={handleToggleListen} disabled={!recognitionRef.current} className={`p-4 rounded-full transition-all duration-300 ${isListening ? 'bg-red-400 text-white shadow-md scale-110' : `${currentTheme.bg} ${currentTheme.text} hover:bg-white ${currentTheme.neumorphicSm}`}`}>
+                {isListening ? <MicOff className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
+              </button>
+              <button onClick={handleTextSend} disabled={isLoading || input.trim() === ''} className={`ml-2 ${currentTheme.userBubble} text-white rounded-full p-4 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed transition-all duration-200 ${currentTheme.neumorphicSm} hover:scale-105`}>
+                <Send className="w-6 h-6" />
+              </button>
             </div>
-          )}
-          <div ref={chatEndRef} />
-        </div>
-      </main>
-      <div className="bg-white border-t border-gray-200 p-4">
-        <div className="container mx-auto max-w-3xl">
-          <div className="flex items-center bg-gray-100 rounded-full p-2 shadow-inner">
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleSend()}
-              placeholder={isListening ? "Escuchando..." : "Escribe o pulsa el micrófono..."}
-              className="flex-1 bg-transparent outline-none px-4 text-gray-700 placeholder-gray-500"
-              disabled={isLoading}
-            />
-            <button
-              onClick={handleToggleListen}
-              disabled={!recognition}
-              className={`p-3 rounded-full transition-all duration-300 ${isListening ? 'bg-red-500 text-white scale-110 animate-pulse' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'}`}
-            >
-              {isListening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
-            </button>
-            <button
-              onClick={() => handleSend()}
-              disabled={isLoading || input.trim() === ''}
-              className="ml-2 bg-blue-700 text-white rounded-full p-3 hover:bg-blue-800 disabled:bg-blue-300 disabled:cursor-not-allowed transition-colors duration-200"
-            >
-              <Send className="w-5 h-5" />
-            </button>
           </div>
         </div>
       </div>
-      <footer className="bg-gray-200 text-center p-4 text-xs text-gray-600">
+
+      <footer className={`bg-transparent text-center p-4 text-xs ${currentTheme.text}/70 z-10`}>
         <p>
-          <Heart className="w-4 h-4 inline-block mx-1 text-red-500"/>
+          <Heart className={`w-4 h-4 inline-block mx-1 ${currentTheme.primary}`}/>
           La conversación se guarda en tu navegador. Si el dolor es muy intenso, considera buscar ayuda de un profesional de la salud mental.
         </p>
-        <p className="mt-1">Contacto Peludo es un asistente de IA avanzado y no reemplaza el consejo médico o psicológico profesional.</p>
       </footer>
     </div>
   );
