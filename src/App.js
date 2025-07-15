@@ -78,7 +78,6 @@ const themes = {
   }
 };
 
-// CORRECCIÓN: Todos los componentes de UI se definen fuera y antes del componente App.
 const Background = ({ mode }) => (
   <div className="absolute inset-0 z-0 overflow-hidden">
     <div className={`absolute top-[-50%] left-[-50%] w-[200%] h-[200%] ${mode === 'light' ? 'bg-gradient-radial from-rose-100/40 via-amber-50/0 to-amber-50/0' : 'bg-gradient-radial from-rose-900/20 via-black/0 to-black/0'} animate-pulse-slow`}></div>
@@ -152,7 +151,6 @@ const App = () => {
   const [themeName, setThemeName] = useState('warm');
   const [mode, setMode] = useState('light');
   const chatEndRef = useRef(null);
-  const silenceTimerRef = useRef(null);
   const recognitionRef = useRef(null);
 
   const currentTheme = themes[themeName][mode];
@@ -308,16 +306,8 @@ const App = () => {
     recognition.onstart = () => setIsListening(true);
     recognition.onend = () => setIsListening(false);
     recognition.onresult = (event) => {
-      clearTimeout(silenceTimerRef.current);
       const transcript = Array.from(event.results).map(result => result[0]).map(result => result.transcript).join('');
       setInput(transcript);
-      const lastResult = event.results[event.results.length - 1];
-      if (lastResult.isFinal) {
-        silenceTimerRef.current = setTimeout(() => {
-          if (recognitionRef.current) { recognitionRef.current.stop(); }
-          handleSend(transcript.trim());
-        }, 3500);
-      }
     };
     recognition.onerror = (event) => { console.error("Speech recognition error", event.error); setIsListening(false); };
   }, [handleSend]);
@@ -327,7 +317,6 @@ const App = () => {
     if (!recognition) { alert("Tu navegador no soporta el reconocimiento de voz. Por favor, intenta con Chrome o Edge."); return; }
     if (isListening) {
       recognition.stop();
-      if(input.trim()){ handleSend(input.trim()); }
     } else {
       setInput('');
       recognition.start();
@@ -466,33 +455,27 @@ const App = () => {
 
         <main className="flex-1 overflow-y-auto p-4 md:p-6">
           <div className="container mx-auto max-w-3xl">
-            {/* CORRECCIÓN: Volver a la lógica de renderizado simple */}
-            {messages.map((msg, index) => {
-              const currentDate = new Date(msg.date).toLocaleDateString();
-              const prevDate = index > 0 ? new Date(messages[index - 1].date).toLocaleDateString() : null;
-              const showDateHeader = currentDate !== prevDate;
-
-              return (
-                <React.Fragment key={index}>
-                  {showDateHeader && (
-                     <div className="text-center my-4">
-                       <span className={`${currentTheme.header} ${currentTheme.text} text-xs font-semibold px-3 py-1 rounded-full`}>
-                         {new Date(msg.date).toLocaleDateString('es-ES', { timeZone: 'UTC', year: 'numeric', month: 'long', day: 'numeric' })}
-                       </span>
-                     </div>
-                  )}
+            {Object.keys(groupedByDate).sort().map(date => (
+              <div key={date}>
+                <div className="text-center my-4">
+                  <span className={`${currentTheme.header} ${currentTheme.text} text-xs font-semibold px-3 py-1 rounded-full`}>
+                    {new Date(date).toLocaleDateString('es-ES', { timeZone: 'UTC', year: 'numeric', month: 'long', day: 'numeric' })}
+                  </span>
+                </div>
+                {groupedByDate[date].map((msg, index) => (
                   <Message 
+                    key={`${date}-${index}`}
                     message={msg.text} 
                     isUser={msg.isUser}
                     playbackState={playbackState}
-                    isLastMessage={index === messages.length - 1}
+                    isLastMessage={index === groupedByDate[date].length - 1 && date === Object.keys(groupedByDate).sort().pop()}
                     onPlaybackControl={handlePlaybackControl}
                     onWordClick={handleWordClick}
                     theme={currentTheme}
                   />
-                </React.Fragment>
-              )
-            })}
+                ))}
+              </div>
+            ))}
             {isLoading && (
               <div className="flex justify-start items-center gap-3 my-5">
                 <div className={`flex-shrink-0 p-2 rounded-full ${currentTheme.neumorphicSm} bg-white`}><AssistantIcon isSpeaking={true} theme={currentTheme}/></div>
@@ -512,7 +495,7 @@ const App = () => {
         <div className="p-4 sticky bottom-0">
           <div className="container mx-auto max-w-3xl">
             <div className={`flex items-center ${currentTheme.bg} rounded-full p-2 ${currentTheme.neumorphicInset}`}>
-              <input type="text" value={input} onChange={(e) => setInput(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && handleTextSend()} placeholder={isListening ? "Escuchando con atención..." : "Escribe o pulsa el micrófono..."} className={`flex-1 bg-transparent outline-none px-4 ${currentTheme.text} placeholder-gray-500 font-medium`} disabled={isLoading} />
+              <input type="text" value={input} onChange={(e) => setInput(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && handleTextSend()} placeholder={isListening ? "Grabando... pulsa para detener" : "Escribe o pulsa el micrófono..."} className={`flex-1 bg-transparent outline-none px-4 ${currentTheme.text} placeholder-gray-500 font-medium`} disabled={isLoading} />
               <button onClick={handleToggleListen} disabled={!recognitionRef.current} className={`p-4 rounded-full transition-all duration-300 ${isListening ? 'bg-red-400 text-white shadow-md scale-110' : `${currentTheme.bg} ${currentTheme.text} hover:bg-white ${currentTheme.neumorphicSm}`}`}>
                 {isListening ? <MicOff className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
               </button>
