@@ -78,6 +78,7 @@ const themes = {
   }
 };
 
+// CORRECCIÓN: Todos los componentes de UI se definen fuera y antes del componente App.
 const Background = ({ mode }) => (
   <div className="absolute inset-0 z-0 overflow-hidden">
     <div className={`absolute top-[-50%] left-[-50%] w-[200%] h-[200%] ${mode === 'light' ? 'bg-gradient-radial from-rose-100/40 via-amber-50/0 to-amber-50/0' : 'bg-gradient-radial from-rose-900/20 via-black/0 to-black/0'} animate-pulse-slow`}></div>
