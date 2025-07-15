@@ -396,7 +396,7 @@ const App = () => {
     const blob = new Blob([htmlContent], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-a.href = url;
+    a.href = url;
     a.download = 'conversacion-con-Bela.html';
     document.body.appendChild(a);
     a.click();
@@ -466,27 +466,33 @@ a.href = url;
 
         <main className="flex-1 overflow-y-auto p-4 md:p-6">
           <div className="container mx-auto max-w-3xl">
-            {Object.keys(groupedByDate).sort().map(date => (
-              <div key={date}>
-                <div className="text-center my-4">
-                  <span className={`${currentTheme.header} ${currentTheme.text} text-xs font-semibold px-3 py-1 rounded-full`}>
-                    {new Date(date).toLocaleDateString('es-ES', { timeZone: 'UTC', year: 'numeric', month: 'long', day: 'numeric' })}
-                  </span>
-                </div>
-                {groupedByDate[date].map((msg, index) => (
+            {/* CORRECCIÓN: Volver a la lógica de renderizado simple */}
+            {messages.map((msg, index) => {
+              const currentDate = new Date(msg.date).toLocaleDateString();
+              const prevDate = index > 0 ? new Date(messages[index - 1].date).toLocaleDateString() : null;
+              const showDateHeader = currentDate !== prevDate;
+
+              return (
+                <React.Fragment key={index}>
+                  {showDateHeader && (
+                     <div className="text-center my-4">
+                       <span className={`${currentTheme.header} ${currentTheme.text} text-xs font-semibold px-3 py-1 rounded-full`}>
+                         {new Date(msg.date).toLocaleDateString('es-ES', { timeZone: 'UTC', year: 'numeric', month: 'long', day: 'numeric' })}
+                       </span>
+                     </div>
+                  )}
                   <Message 
-                    key={`${date}-${index}`}
                     message={msg.text} 
                     isUser={msg.isUser}
                     playbackState={playbackState}
-                    isLastMessage={index === groupedByDate[date].length - 1 && date === Object.keys(groupedByDate).sort().pop()}
+                    isLastMessage={index === messages.length - 1}
                     onPlaybackControl={handlePlaybackControl}
                     onWordClick={handleWordClick}
                     theme={currentTheme}
                   />
-                ))}
-              </div>
-            ))}
+                </React.Fragment>
+              )
+            })}
             {isLoading && (
               <div className="flex justify-start items-center gap-3 my-5">
                 <div className={`flex-shrink-0 p-2 rounded-full ${currentTheme.neumorphicSm} bg-white`}><AssistantIcon isSpeaking={true} theme={currentTheme}/></div>
