@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { PawPrint, Send, User, Heart, BookOpen, Mic, MicOff, Volume2, VolumeX, Play, Pause, StopCircle, Sun, Moon, Palette } from 'lucide-react';
+import { PawPrint, Send, User, Heart, BookOpen, Mic, MicOff, Volume2, VolumeX, Play, Pause, StopCircle, Sun, Moon, Palette, Download } from 'lucide-react';
 
 // --- Sistema de Temas y Estilos ---
 
@@ -35,7 +35,7 @@ const themes = {
       text: 'text-gray-700',
       primary: 'text-blue-500',
       userBubble: 'bg-gradient-to-br from-blue-500 to-cyan-400',
-aiBubble: 'bg-[#E6F0F5]',
+      aiBubble: 'bg-[#E6F0F5]',
       neumorphicSm: 'shadow-[3px_3px_6px_#c4cfd3,-3px_-3px_6px_#ffffff]',
       neumorphicMd: 'shadow-[6px_6px_12px_#c4cfd3,-6px_-6px_12px_#ffffff]',
       neumorphicInset: 'shadow-[inset_6px_6px_12px_#c4cfd3,inset_-6px_-6px_12px_#ffffff]',
@@ -141,7 +141,6 @@ const Message = ({ message, isUser, playbackState, isLastMessage, onPlaybackCont
 // --- Componente Principal de la Aplicación ---
 
 const App = () => {
-  // REVERSIÓN: Volvemos a un array simple para los mensajes
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -183,13 +182,12 @@ const App = () => {
 
   useEffect(() => {
     try {
-      // REVERSIÓN: Lógica de guardado simple
       const savedData = localStorage.getItem('contactoPeludoMessagesBela');
       if (savedData) {
         setMessages(JSON.parse(savedData));
       } else {
         const welcomeText = "Hola, soy Contacto Peludo. Veo que has llegado hasta aquí, y eso requiere mucha valentía. Sé que el corazón duele profundamente cuando un amigo tan leal como Bela nos deja. Mi propósito es ser tu confidente y guía. Por favor, siéntete libre de hablar o escribir. Estoy aquí para caminar a tu lado.";
-        setMessages([{ text: welcomeText, isUser: false }]);
+        setMessages([{ text: welcomeText, isUser: false, date: new Date().toISOString() }]);
       }
     } catch (error) {
         console.error("Failed to load messages from localStorage", error);
@@ -258,15 +256,13 @@ const App = () => {
   const handleSend = React.useCallback(async (textToSend) => {
     if (textToSend.trim() === '' || isLoading) return;
     
-    const userMessage = { text: textToSend, isUser: true };
+    const userMessage = { text: textToSend, isUser: true, date: new Date().toISOString() };
     const currentChatHistory = [...messages, userMessage].map(m => ({ role: m.isUser ? "user" : "model", parts: [{ text: m.text }] }));
     
     setMessages(prev => [...prev, userMessage]);
     setInput('');
     setIsLoading(true);
     
-    // NOTA PARA VERSIÓN FINAL: Para Vercel, el fetch debe ser a '/api/chat'
-    // Para este preview, usamos la llamada directa a la API de Google.
     let retries = 3;
     let delay = 1000;
     while (retries > 0) {
@@ -282,7 +278,7 @@ const App = () => {
         let aiText = "Lo siento, parece que no puedo encontrar las palabras correctas en este momento.";
         if (result.candidates?.[0]?.content?.parts?.[0]?.text) { aiText = result.candidates[0].content.parts[0].text; }
         
-        const aiMessage = { text: aiText, isUser: false };
+        const aiMessage = { text: aiText, isUser: false, date: new Date().toISOString() };
         setMessages(prev => [...prev, aiMessage]);
 
         if (isVoiceResponseEnabled) speak(aiText);
@@ -296,7 +292,7 @@ const App = () => {
         } else {
           console.error("Error al contactar la API:", error);
           const errorText = `Perdona, estoy teniendo dificultades para conectar. El servidor parece estar sobrecargado. Por favor, inténtalo de nuevo en unos momentos. (Error: ${error.message})`;
-          const errorMessage = { text: errorText, isUser: false };
+          const errorMessage = { text: errorText, isUser: false, date: new Date().toISOString() };
           setMessages(prev => [...prev, errorMessage]);
           if (isVoiceResponseEnabled) speak(errorText);
           setIsLoading(false);
@@ -354,6 +350,69 @@ const App = () => {
     }
   };
 
+  const handleDownloadChat = () => {
+    const chatHistory = messages;
+    let htmlContent = `
+      <!DOCTYPE html>
+      <html lang="es">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Conversación con Bela</title>
+        <style>
+          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 2rem; background-color: #F5EFE6; }
+          .message-container { display: flex; margin-bottom: 1rem; }
+          .message-bubble { max-width: 70%; padding: 1rem; border-radius: 1.5rem; }
+          .user { justify-content: flex-end; }
+          .user .message-bubble { background-color: #D1495B; color: white; border-bottom-right-radius: 0.5rem; }
+          .ai { justify-content: flex-start; }
+          .ai .message-bubble { background-color: #E8DFCA; color: #333; border-bottom-left-radius: 0.5rem; }
+          .date-header { text-align: center; margin: 2rem 0; color: #888; font-size: 0.8rem; }
+        </style>
+      </head>
+      <body>
+        <h1>Historial de Conversación sobre Bela</h1>
+    `;
+
+    let lastDate = null;
+    chatHistory.forEach(msg => {
+      const msgDate = new Date(msg.date).toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' });
+      if (msgDate !== lastDate) {
+        htmlContent += `<div class="date-header">--- ${msgDate} ---</div>`;
+        lastDate = msgDate;
+      }
+      const containerClass = msg.isUser ? 'user' : 'ai';
+      htmlContent += `
+        <div class="message-container ${containerClass}">
+          <div class="message-bubble">
+            <p>${msg.text}</p>
+          </div>
+        </div>
+      `;
+    });
+
+    htmlContent += '</body></html>';
+
+    const blob = new Blob([htmlContent], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+a.href = url;
+    a.download = 'conversacion-con-Bela.html';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const groupedByDate = messages.reduce((acc, msg) => {
+    const date = new Date(msg.date).toISOString().split('T')[0];
+    if (!acc[date]) {
+      acc[date] = [];
+    }
+    acc[date].push(msg);
+    return acc;
+  }, {});
+
   return (
     <div className={`font-poppins flex flex-col h-screen relative overflow-hidden ${currentTheme.bg}`}>
       <style>{`
@@ -380,6 +439,9 @@ const App = () => {
                   </div>
               </div>
               <div className="flex items-center gap-2">
+                  <button onClick={handleDownloadChat} className={`p-3 rounded-full ${currentTheme.neumorphicSm} ${currentTheme.bg} hover:bg-white transition-all`}>
+                    <Download size={18} className={currentTheme.text} />
+                  </button>
                   <div className={`p-1 rounded-full ${currentTheme.neumorphicInset} ${currentTheme.bg}`}>
                     <select value={themeName} onChange={(e) => setThemeName(e.target.value)} className={`${currentTheme.bg} border-0 ${currentTheme.text} text-sm rounded-full focus:ring-0 p-2`}>
                       <option value="warm">Cálido</option>
@@ -404,18 +466,26 @@ const App = () => {
 
         <main className="flex-1 overflow-y-auto p-4 md:p-6">
           <div className="container mx-auto max-w-3xl">
-            {/* REVERSIÓN: Renderizado simple del array de mensajes */}
-            {messages.map((msg, index) => (
-              <Message 
-                key={index}
-                message={msg.text} 
-                isUser={msg.isUser}
-                playbackState={playbackState}
-                isLastMessage={index === messages.length - 1}
-                onPlaybackControl={handlePlaybackControl}
-                onWordClick={handleWordClick}
-                theme={currentTheme}
-              />
+            {Object.keys(groupedByDate).sort().map(date => (
+              <div key={date}>
+                <div className="text-center my-4">
+                  <span className={`${currentTheme.header} ${currentTheme.text} text-xs font-semibold px-3 py-1 rounded-full`}>
+                    {new Date(date).toLocaleDateString('es-ES', { timeZone: 'UTC', year: 'numeric', month: 'long', day: 'numeric' })}
+                  </span>
+                </div>
+                {groupedByDate[date].map((msg, index) => (
+                  <Message 
+                    key={`${date}-${index}`}
+                    message={msg.text} 
+                    isUser={msg.isUser}
+                    playbackState={playbackState}
+                    isLastMessage={index === groupedByDate[date].length - 1 && date === Object.keys(groupedByDate).sort().pop()}
+                    onPlaybackControl={handlePlaybackControl}
+                    onWordClick={handleWordClick}
+                    theme={currentTheme}
+                  />
+                ))}
+              </div>
             ))}
             {isLoading && (
               <div className="flex justify-start items-center gap-3 my-5">
