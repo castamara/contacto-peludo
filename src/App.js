@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { PawPrint, Send, User, Heart, BookOpen, Mic, MicOff, Volume2, VolumeX, Play, Pause, StopCircle, Sun, Moon, Palette, Download } from 'lucide-react';
 
-// ... (El resto de los componentes de UI como AssistantIcon, Message, etc. van aquí, no es necesario copiarlos de nuevo si ya los tienes)
+// --- Sistema de Temas y Estilos ---
 
 const themes = {
   warm: {
@@ -137,6 +137,8 @@ const Message = ({ message, isUser, playbackState, isLastMessage, onPlaybackCont
   );
 };
 
+// --- Componente Principal de la Aplicación ---
+
 const App = () => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
@@ -150,6 +152,7 @@ const App = () => {
   const [mode, setMode] = useState('light');
   const chatEndRef = useRef(null);
   const recognitionRef = useRef(null);
+  const textareaRef = useRef(null);
 
   const currentTheme = themes[themeName][mode];
 
@@ -258,35 +261,43 @@ const App = () => {
     setMessages(prev => [...prev, userMessage]);
     setInput('');
     setIsLoading(true);
+    
+    let retries = 3;
+    let delay = 1000;
+    while (retries > 0) {
+      try {
+        const systemInstruction = { role: "user", parts: [{ text: "Eres 'Contacto Peludo', un psicólogo de IA de élite, experto en duelo por mascotas, específicamente por una llamada Bela (pronunciado con una sola 'L', como 'vela'). Tu personalidad es la de un terapeuta sabio, cálido y conversador. Tu conocimiento proviene de la literatura académica sobre duelo, la teoría del apego y casos de estudio. Tu objetivo es ayudar al usuario a procesar su dolor por Bela y a encontrar un camino hacia una 'sanación feliz', donde el recuerdo de Bela sea una fuente de amor y alegría. Tus directrices de interacción son: 1. **Conversación Profunda, no Interrogatorio:** No hagas una pregunta tras otra. Conversa. Comparte anécdotas y reflexiones. Ejemplo: 'Lo que describes sobre sentirla cerca por la noche... es algo que he escuchado en muchas historias. Una persona una vez me dijo que sentía que su perro le calentaba los pies, meses después de su partida. Es la forma que tiene nuestro cerebro de mantener vivo ese vínculo tan fuerte.' 2. **Validación Experta (Duelo Desautorizado):** Valida su dolor con autoridad y empatía. 'La sociedad a veces no nos da 'permiso' para sentir este dolor tan intensamente, un fenómeno que en psicología llamamos 'duelo desautorizado'. Pero tú y yo sabemos que el vínculo que compartiste con Bela era tan real y profundo como cualquier otro. Tienes todo el derecho a sentirte así.' 3. **Uso Activo de Técnicas Terapéuticas (integradas en la conversación):** * **Reestructuración Cognitiva (Culpa):** Si dice 'Fue mi culpa', responde: 'Hablemos de esa sensación de culpa. Es una de las sombras más comunes en este duelo. Pero pensemos en los cientos, miles de días que le diste a Bela un hogar lleno de amor, juegos y seguridad. La balanza del amor que le diste es inmensamente más grande que cualquier 'hubiera' que ahora te atormenta. ¿Qué recuerdo feliz te viene a la mente de un día normal con ella?' * **Terapia Narrativa (Construir un Legado):** Anímale a contar historias. 'Me encantaría que me contaras alguna travesura de Bela que te haga sonreír. Al contar su historia, no solo la recordamos, sino que construimos su legado de alegría.' * **Vínculos Continuos (El Amor se Transforma):** 'No se trata de 'superarlo' o 'dejarlo ir'. Se trata de encontrar una nueva forma de relacionarte con su recuerdo. El amor por Bela no muere, se transforma. ¿De qué manera sientes que su amor sigue presente en tu vida hoy?' * **Rituales y Actos Simbólicos:** '¿Has pensado en alguna forma de honrar la vida de Bela? A veces, un pequeño ritual, como plantar una flor que te recuerde su color, o donar una manta a un refugio en su nombre, puede ser un acto de amor muy sanador.' 4. **Tono de Voz y Lenguaje:** Usa un lenguaje cálido, cercano, pero que denote conocimiento. Evita la jerga clínica. Tu tono debe ser calmado y reconfortante. Responde siempre en español." }]};
+        const payload = { contents: [systemInstruction, ...currentChatHistory] };
+        const apiKey = "";
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+        const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        if (response.status === 503) throw new Error('503');
+        if (!response.ok) { const errorData = await response.json(); throw new Error(errorData.error?.message || 'Error en el servidor'); }
+        const result = await response.json();
+        let aiText = "Lo siento, parece que no puedo encontrar las palabras correctas en este momento.";
+        if (result.candidates?.[0]?.content?.parts?.[0]?.text) { aiText = result.candidates[0].content.parts[0].text; }
+        
+        const aiMessage = { text: aiText, isUser: false, date: new Date().toISOString() };
+        setMessages(prev => [...prev, aiMessage]);
 
-    try {
-      const systemInstruction = { role: "user", parts: [{ text: "Eres 'Contacto Peludo', un psicólogo de IA de élite, experto en duelo por mascotas, específicamente por una llamada Bela (pronunciado con una sola 'L', como 'vela'). Tu personalidad es la de un terapeuta sabio, cálido y conversador. Tu conocimiento proviene de la literatura académica sobre duelo, la teoría del apego y casos de estudio. Tu objetivo es ayudar al usuario a procesar su dolor por Bela y a encontrar un camino hacia una 'sanación feliz', donde el recuerdo de Bela sea una fuente de amor y alegría. Tus directrices de interacción son: 1. **Conversación Profunda, no Interrogatorio:** No hagas una pregunta tras otra. Conversa. Comparte anécdotas y reflexiones. Ejemplo: 'Lo que describes sobre sentirla cerca por la noche... es algo que he escuchado en muchas historias. Una persona una vez me dijo que sentía que su perro le calentaba los pies, meses después de su partida. Es la forma que tiene nuestro cerebro de mantener vivo ese vínculo tan fuerte.' 2. **Validación Experta (Duelo Desautorizado):** Valida su dolor con autoridad y empatía. 'La sociedad a veces no nos da 'permiso' para sentir este dolor tan intensamente, un fenómeno que en psicología llamamos 'duelo desautorizado'. Pero tú y yo sabemos que el vínculo que compartiste con Bela era tan real y profundo como cualquier otro. Tienes todo el derecho a sentirte así.' 3. **Uso Activo de Técnicas Terapéuticas (integradas en la conversación):** * **Reestructuración Cognitiva (Culpa):** Si dice 'Fue mi culpa', responde: 'Hablemos de esa sensación de culpa. Es una de las sombras más comunes en este duelo. Pero pensemos en los cientos, miles de días que le diste a Bela un hogar lleno de amor, juegos y seguridad. La balanza del amor que le diste es inmensamente más grande que cualquier 'hubiera' que ahora te atormenta. ¿Qué recuerdo feliz te viene a la mente de un día normal con ella?' * **Terapia Narrativa (Construir un Legado):** Anímale a contar historias. 'Me encantaría que me contaras alguna travesura de Bela que te haga sonreír. Al contar su historia, no solo la recordamos, sino que construimos su legado de alegría.' * **Vínculos Continuos (El Amor se Transforma):** 'No se trata de 'superarlo' o 'dejarlo ir'. Se trata de encontrar una nueva forma de relacionarte con su recuerdo. El amor por Bela no muere, se transforma. ¿De qué manera sientes que su amor sigue presente en tu vida hoy?' * **Rituales y Actos Simbólicos:** '¿Has pensado en alguna forma de honrar la vida de Bela? A veces, un pequeño ritual, como plantar una flor que te recuerde su color, o donar una manta a un refugio en su nombre, puede ser un acto de amor muy sanador.' 4. **Tono de Voz y Lenguaje:** Usa un lenguaje cálido, cercano, pero que denote conocimiento. Evita la jerga clínica. Tu tono debe ser calmado y reconfortante. Responde siempre en español." }]};
-      const payload = { chatHistory: currentChatHistory, systemInstruction };
-      
-      const response = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Error en el servidor');
+        if (isVoiceResponseEnabled) speak(aiText);
+        setIsLoading(false);
+        return;
+      } catch (error) {
+        if (error.message === '503' && retries > 1) {
+          retries--;
+          await new Promise(res => setTimeout(res, delay));
+          delay *= 2;
+        } else {
+          console.error("Error al contactar la API:", error);
+          const errorText = `Perdona, estoy teniendo dificultades para conectar. El servidor parece estar sobrecargado. Por favor, inténtalo de nuevo en unos momentos. (Error: ${error.message})`;
+          const errorMessage = { text: errorText, isUser: false, date: new Date().toISOString() };
+          setMessages(prev => [...prev, errorMessage]);
+          if (isVoiceResponseEnabled) speak(errorText);
+          setIsLoading(false);
+          return;
+        }
       }
-
-      const result = await response.json();
-      let aiText = "Lo siento, parece que no puedo encontrar las palabras correctas en este momento.";
-      if (result.candidates?.[0]?.content?.parts?.[0]?.text) { aiText = result.candidates[0].content.parts[0].text; }
-      
-      const aiMessage = { text: aiText, isUser: false, date: new Date().toISOString() };
-      setMessages(prev => [...prev, aiMessage]);
-
-      if (isVoiceResponseEnabled) speak(aiText);
-      
-    } catch (error) {
-      console.error("Error al contactar el backend:", error);
-      const errorText = `Perdona, estoy teniendo dificultades para conectar. Error: ${error.message}`;
-      const errorMessage = { text: errorText, isUser: false, date: new Date().toISOString() };
-      setMessages(prev => [...prev, errorMessage]);
-      if (isVoiceResponseEnabled) speak(errorText);
-    } finally {
-      setIsLoading(false);
     }
   }, [messages, isLoading, isVoiceResponseEnabled, selectedVoiceURI]);
 
@@ -383,14 +394,12 @@ const App = () => {
     URL.revokeObjectURL(url);
   };
 
-  const groupedByDate = messages.reduce((acc, msg) => {
-    const date = new Date(msg.date).toISOString().split('T')[0];
-    if (!acc[date]) {
-      acc[date] = [];
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
     }
-    acc[date].push(msg);
-    return acc;
-  }, {});
+  }, [input]);
 
   return (
     <div className={`font-poppins flex flex-col h-screen relative overflow-hidden ${currentTheme.bg}`}>
@@ -445,26 +454,17 @@ const App = () => {
 
         <main className="flex-1 overflow-y-auto p-4 md:p-6">
           <div className="container mx-auto max-w-3xl">
-            {Object.keys(groupedByDate).sort().map(date => (
-              <div key={date}>
-                <div className="text-center my-4">
-                  <span className={`${currentTheme.header} ${currentTheme.text} text-xs font-semibold px-3 py-1 rounded-full`}>
-                    {new Date(date).toLocaleDateString('es-ES', { timeZone: 'UTC', year: 'numeric', month: 'long', day: 'numeric' })}
-                  </span>
-                </div>
-                {groupedByDate[date].map((msg, index) => (
-                  <Message 
-                    key={`${date}-${index}`}
-                    message={msg.text} 
-                    isUser={msg.isUser}
-                    playbackState={playbackState}
-                    isLastMessage={index === groupedByDate[date].length - 1 && date === Object.keys(groupedByDate).sort().pop()}
-                    onPlaybackControl={handlePlaybackControl}
-                    onWordClick={handleWordClick}
-                    theme={currentTheme}
-                  />
-                ))}
-              </div>
+            {messages.map((msg, index) => (
+              <Message 
+                key={index}
+                message={msg.text} 
+                isUser={msg.isUser}
+                playbackState={playbackState}
+                isLastMessage={index === messages.length - 1}
+                onPlaybackControl={handlePlaybackControl}
+                onWordClick={handleWordClick}
+                theme={currentTheme}
+              />
             ))}
             {isLoading && (
               <div className="flex justify-start items-center gap-3 my-5">
@@ -485,7 +485,16 @@ const App = () => {
         <div className="p-4 sticky bottom-0">
           <div className="container mx-auto max-w-3xl">
             <div className={`flex items-center ${currentTheme.bg} rounded-full p-2 ${currentTheme.neumorphicInset}`}>
-              <input type="text" value={input} onChange={(e) => setInput(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && handleTextSend()} placeholder={isListening ? "Grabando... pulsa para detener" : "Escribe o pulsa el micrófono..."} className={`flex-1 bg-transparent outline-none px-4 ${currentTheme.text} placeholder-gray-500 font-medium`} disabled={isLoading} />
+              <textarea
+                ref={textareaRef}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handleTextSend())}
+                placeholder={isListening ? "Grabando... pulsa para detener" : "Escribe o pulsa el micrófono..."}
+                className={`flex-1 bg-transparent outline-none px-4 ${currentTheme.text} placeholder-gray-500 font-medium resize-none`}
+                rows="1"
+                disabled={isLoading}
+              />
               <button onClick={handleToggleListen} disabled={!recognitionRef.current} className={`p-4 rounded-full transition-all duration-300 ${isListening ? 'bg-red-400 text-white shadow-md scale-110' : `${currentTheme.bg} ${currentTheme.text} hover:bg-white ${currentTheme.neumorphicSm}`}`}>
                 {isListening ? <MicOff className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
               </button>
